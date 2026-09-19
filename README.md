@@ -263,7 +263,7 @@ Two different numbers matter — and the smaller one is **not** a limit of the s
 |---|---:|---|
 | Model context (`Qwen3-0.6B`) | **40,960 tokens** | The model's architectural window — large even at 0.6 B; context length comes from RoPE, independent of parameter count. |
 | JEV-CPU / SemIf default cap | **4,096 tokens / decision** | A safety guard (`max_tokens`); over-long prompts raise instead of being silently truncated. Configurable. |
-| Stable on this 8 GB CPU box | *(measured below)* | Where CPU **prefill latency**, not the model, becomes the practical ceiling. |
+| Practical max on this 8 GB CPU box | **≈ 7,700 tokens (~117 s)** | Where CPU **prefill latency** becomes the ceiling. Beyond this a single decision crosses **~120 s**, which we treat as impractical — not a memory or model limit. |
 
 **Measured on this 8 GB CPU box** (no GPU), one decision, growing input:
 
@@ -276,7 +276,7 @@ Two different numbers matter — and the smaller one is **not** a limit of the s
 | 5,165 | 66.1 s | ~3.5 GB |
 | 7,697 | 117.4 s | ~3.5 GB |
 
-RAM stayed **flat at ~3.5 GB** even at 7,697 tokens — well past the 4,096 default and with no OOM — so on this box the ceiling is **prefill latency (≈ quadratic)**, not memory or the model. Interactive ~1 s decisions want short states (≲ ~300 tokens); long documents still work, just slower. A GPU removes this latency wall entirely.
+RAM stayed **flat at ~3.5 GB** even at 7,697 tokens — well past the 4,096 default and with no OOM — so on this box the ceiling is **prefill latency (≈ quadratic)**, not memory or the model. We cap the **practical input at ≈ 7,700 tokens (~117 s)**: past that, one decision exceeds **~120 s**, which is no longer useful on CPU, so larger inputs are treated as unsupported here. Interactive ~1 s decisions want short states (≲ ~300 tokens). A GPU removes this latency wall entirely — where much larger inputs (up to the model's 40,960) become usable again.
 
 Raising the cap is a parameter, not a rebuild: pass a larger `max_tokens` to `direct_score(...)` (or `--max-tokens` in upstream SemIf's CLI). The model accepts input up to 40,960 tokens; on **CPU** the real constraint is prefill time — latency grows with length, so short states keep decisions near ~1 s.
 
