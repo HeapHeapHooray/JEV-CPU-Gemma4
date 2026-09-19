@@ -1,0 +1,73 @@
+{
+  "commands": [
+    [
+      ".venv/bin/openjev-score",
+      "--backend",
+      "mlx",
+      "--mode",
+      "direct",
+      "--model",
+      "Qwen/Qwen3.5-4B",
+      "--revision",
+      "851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a",
+      "--input",
+      "results/mlx/2026-09-17-cli-smoke/input.jsonl",
+      "--output",
+      "results/mlx/2026-09-17-cli-smoke/direct.jsonl"
+    ],
+    [
+      ".venv/bin/openjev-score",
+      "--backend",
+      "mlx",
+      "--mode",
+      "serial",
+      "--model",
+      "Qwen/Qwen3.5-4B",
+      "--revision",
+      "851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a",
+      "--input",
+      "results/mlx/2026-09-17-cli-smoke/input.jsonl",
+      "--output",
+      "results/mlx/2026-09-17-cli-smoke/serial.jsonl"
+    ],
+    [
+      ".venv/bin/openjev-score",
+      "--backend",
+      "mlx",
+      "--mode",
+      "shared",
+      "--model",
+      "Qwen/Qwen3.5-4B",
+      "--revision",
+      "851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a",
+      "--input",
+      "results/mlx/2026-09-17-cli-smoke/input.jsonl",
+      "--output",
+      "results/mlx/2026-09-17-cli-smoke/shared.jsonl"
+    ]
+  ],
+  "status": "ok",
+  "rows_per_mode": 3,
+  "comparisons": {
+    "serial": {
+      "rows": 3,
+      "argmax_flips": [],
+      "prompt_mismatches": [],
+      "max_probability_difference": 0.03049009906827166,
+      "mean_max_probability_difference": 0.010163366356090553
+    },
+    "shared": {
+      "rows": 3,
+      "argmax_flips": [],
+      "prompt_mismatches": [],
+      "max_probability_difference": 0.03049009906827166,
+      "mean_max_probability_difference": 0.010163366356090553
+    }
+  },
+  "sha256": {
+    "direct.jsonl": "a4cdfcfa5ae2adf06c81a7c2eca6624e5987dab7fc60a8c28653ab68efe46097",
+    "input.jsonl": "3a790dec9f60d91d0d963f95dd7ef3946a77fe81affee71a5f556d0378cff671",
+    "serial.jsonl": "cdf06097dda77bdef932993a7113eb74f87e875482004520d442beaca54a6e06",
+    "shared.jsonl": "d979222fa80c8e8e148085451a17ba2d3e667d60e9692b19a9ed493bcc2639dc"
+  }
+}

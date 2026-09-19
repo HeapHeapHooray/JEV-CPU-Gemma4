@@ -1,0 +1,11 @@
+{"version": 2, "width": 110, "height": 36, "timestamp": 1789674049, "title": "OpenJev on Apple M5 Max \u2014 native MLX CLI", "env": {"TERM": "xterm-256color"}}
+[0.006607, "o", "OpenJev / native Apple Silicon scoring\r\n\r\n$ sysctl -n machdep.cpu.brand_string; uname -m\r\n"]
+[0.008535, "o", "Apple M5 Max\r\n"]
+[0.010612, "o", "arm64\r\n"]
+[0.07394, "o", "Metal available: True\r\n"]
+[0.07517, "o", "MLX 0.32.2 | MLX-LM 0.32.0\r\n"]
+[0.080367, "o", "\r\n$ openjev-score --backend mlx --mode direct\r\n"]
+[0.080415, "o", "    --model Qwen/Qwen3.5-4B --revision 851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a\r\n    --input examples/decisions.jsonl --output <new demo output>\r\n\r\n"]
+[6.442969, "o", "\r\n________________________________________________________\r\nExecuted in    6.36 secs    fish           external\r\n   usr time    4.39 secs   34.00 micros    4.39 secs\r\n   sys time    2.52 secs  365.00 micros    2.52 secs\r\n\r\n"]
+[6.458228, "o", "\r\nDecision          Selected option     Conditional score\r\n------------------------------------------------------\r\n"]
+[6.458281, "o", "support-1         yes                 0.9996\r\nroute-1           account_access      1.0000\r\npolicy-1          not_required        0.9380\r\n\r\nCompleted: 3 decisions | native MLX / Metal | BF16 source\r\nNo generated tokens. Scores are not calibrated confidence.\r\nModel loading and hashing are included in the wall time above.\r\n"]

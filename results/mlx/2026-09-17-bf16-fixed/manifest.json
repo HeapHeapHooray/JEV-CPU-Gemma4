@@ -1,0 +1,68 @@
+{
+  "model": {
+    "source": "Qwen/Qwen3.5-4B",
+    "revision": "851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a",
+    "backend": "mlx",
+    "mlx_version": "0.32.2",
+    "mlx_lm_version": "0.32.0",
+    "transformers_version": "5.17.0",
+    "mlx_lm_source": {
+      "url": "https://github.com/ml-explore/mlx-lm.git",
+      "vcs_info": {
+        "vcs": "git",
+        "commit_id": "a63e24c389382619eb6d9af656e3b46024be217a",
+        "requested_revision": "a63e24c389382619eb6d9af656e3b46024be217a"
+      }
+    },
+    "allocator_cache_limit_bytes": 268435456,
+    "dtype": [
+      "mlx.core.bfloat16",
+      "mlx.core.float32"
+    ],
+    "quantization": null,
+    "source_artifact_sha256": {
+      "chat_template.jinja": "a4aee8afcf2e0711942cf848899be66016f8d14a889ff9ede07bca099c28f715",
+      "config.json": "ddc63e1c717afa86c865bb5e01313d89d72bb53b97ad4a8a03ba8510c0621670",
+      "merges.txt": "a9d356d7bdf1ef4949e3e748e95b8e10ad9d4e2e838eddc38a0a7b6b94d1db8d",
+      "model.safetensors-00001-of-00002.safetensors": "26a93f066e1916adb13453dae5a0c707c0fbc71299ed98779571a907b8e74c61",
+      "model.safetensors-00002-of-00002.safetensors": "cb544bd9bfae93dc59b0f22b292f5933573854a7f9b97835c67060d7d910e188",
+      "model.safetensors.index.json": "cf3f798ee02ba45f9622aa8892a47369ab667d0afbf154ee7c2212de42e6302d",
+      "preprocessor_config.json": "27225450ac9c6529872ee1924fcb0962ff5634834f817040f444118116f4e516",
+      "tokenizer.json": "5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42",
+      "tokenizer_config.json": "316230d6a809701f4db5ea8f8fc862bc3a6f3229c937c174e674ff3ca0a64ac8",
+      "video_preprocessor_config.json": "7768af27c1fafa9cc9011c1dc20067e03f8915e03b63504550e11d5066986d13",
+      "vocab.json": "ce99b4cb2983d118806ce0a8b777a35b093e2000a503ebde25853284c9dfa003"
+    }
+  },
+  "hardware": {
+    "device_name": "Apple M5 Max",
+    "max_recommended_working_set_size": 115448725504,
+    "memory_size": 137438953472,
+    "architecture": "applegpu_g17s",
+    "max_buffer_length": 86586540032,
+    "resource_limit": 499000
+  },
+  "macos": "26.5.2",
+  "python": "3.12.13",
+  "suite": "all",
+  "reference_run": null,
+  "source_sha256": {
+    "benchmarks/mlx_benchmark.py": "39d34656749136ac999f8745ab7d2063d9623780ca36cdee13c87367b135f45d",
+    "benchmarks/evaluate.py": "2b8376577294d6836e2aff1bccf5d4d01aa1ec39e21f8f908281437b2bd4f2af",
+    "benchmarks/decision_vs_generation.py": "4bbf995214813c285086a3ba8fa63f3740f8fbe1277f14981fe82081a591e606",
+    "src/openjev_phase1/__init__.py": "96d51843ec9877d4295883914f8a698abaaecb4f8d321c451171761a8452ff0b",
+    "src/openjev_phase1/cli.py": "05e7335acf7f610b4eada8b95381c3a0f72a77b2d4c95cd175f28308ce89be2e",
+    "src/openjev_phase1/core.py": "c33dc41a789c39c095c85c1d23d09690dee3726d737bc3dbd051a4f97115e486",
+    "src/openjev_phase1/direct.py": "2c89209787b1b51e5f8f8062b4f602da4c82ba7efad50a4df0863b04aef70c9f",
+    "src/openjev_phase1/mlx_backend.py": "e51997a5e0a63fba203ef6bb940c5317277f1b8f728881d34c4d70bda97570d4",
+    "src/openjev_phase1/reranker.py": "ef9f0a944e85de464ee36d340d423907296c4d052a9332b7707be265bef6dac7",
+    "src/openjev_phase1/serial.py": "889aeed699f877c9eb8a4efc5cff8537bf4b9f4071db6894c328a9dab4fe16a0",
+    "src/openjev_phase1/shared.py": "0e37e5afa50be8d54ca5c477d9f48d16d1b512e7bc03963fa5a3965620be420e"
+  },
+  "timing_scope": "Warm GPU execution including prompt preparation and CPU readout; excludes model loading and result writes. MLX operations are evaluated and synchronized.",
+  "fixture_sha256": {
+    "shape777.jsonl": "8dcf414b12fc2684e3c4ca5f3ebfd3f525f5346fec4a9bc67eb65138101f55f1",
+    "authored144.jsonl": "8162d1c73f925af64453f1ec05ef36d583b3815bf698e60f0d454bd11537e079",
+    "perturbations108.jsonl": "1dd7ccf80518d0e34886478ca23982aa726e9daccd343b9e95cedaf6b569bec4"
+  }
+}

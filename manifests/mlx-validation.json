@@ -1,0 +1,29 @@
+{
+  "version": "mlx-validation-v1",
+  "reference": "Qwen/Qwen3.5-4B@851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a",
+  "runtime": {
+    "mlx": "0.32.2",
+    "mlx-lm": "0.31.3"
+  },
+  "exact_contracts": [
+    "prompt text",
+    "input token IDs",
+    "answer token IDs",
+    "decision IDs",
+    "option IDs",
+    "finite normalized probabilities",
+    "complete fixture coverage"
+  ],
+  "tiny_fp32_cache_probability_atol": 0.0001,
+  "bf16_probability_difference_review_threshold": 0.05,
+  "bf16_policy": "Report every changed choice. Investigate differences above the review threshold; it is a diagnostic trigger, not an accuracy or calibration guarantee. Do not require bit-identical CUDA and Metal outputs.",
+  "pilot": "results/mlx/2026-09-17-bf16-pilot/diagnostic.json",
+  "pilot_observation": "Seven decisions: no changed choices, at most 0.030491 probability movement after prefix splitting, and exactly unchanged shared scores after reversing row order.",
+  "quantization_policy": "Evaluate 8-bit and 4-bit separately against the unquantized MLX baseline. Never assume calibration or preserve CUDA claims by changing tolerances.",
+  "production_runtime": {
+    "mlx": "0.32.2",
+    "mlx-lm": "0.32.0",
+    "mlx_lm_commit": "a63e24c389382619eb6d9af656e3b46024be217a"
+  },
+  "runtime_note": "Original pilot used 0.31.3. Production pins the upstream Qwen L2 epsilon fix; tolerances are unchanged."
+}
