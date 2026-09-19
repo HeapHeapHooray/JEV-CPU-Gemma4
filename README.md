@@ -8,9 +8,9 @@
 
 [Run it locally](#quick-start) · [How it works](#how-it-works) · [Web UI](#web-ui)
 
-![JEV-CPU web UI: state on the top left, criteria on the bottom left, typed decision results on the right](assets/jev-cpu-ui.png)
+![JEV-CPU running live across domains: customer support, content moderation, code review, incident response, email intent, and compliance](assets/jev-cpu-demo.gif)
 
-*Live decisions from `Qwen3-0.6B` running on CPU — each answer read from option logits in ~1 second, no text generated.*
+*Live PoC — the same CPU engine deciding across six domains: **support** (sentiment + routing), **content moderation**, **code-review triage**, **incident severity**, **email intent**, and a **compliance gate**. Each answer is read from `Qwen3-0.6B`'s option logits in ~1 s, no text generated.*
 
 </div>
 
@@ -127,6 +127,8 @@ The first run downloads `Qwen/Qwen3-0.6B` from Hugging Face and loads it on CPU 
 
 ## Web UI
 
+![JEV-CPU web UI — state (top-left), criteria (bottom-left), results (right)](assets/jev-cpu-ui.png)
+
 `server.py` is a dependency-free (standard-library) web server on **port 8080**, laid out in three panes:
 
 ```
@@ -155,10 +157,20 @@ POST /api/decide
 
 ## Verified results (CPU · Qwen3-0.6B · float32)
 
-| State | Criterion | Result | Forward |
+These are the exact decisions shown in the demo GIF above — one CPU engine, six domains:
+
+| Domain | Criterion | Decision | Forward |
 |---|---|---|---:|
-| "I was double charged and need a refund before Friday." | Which team handles this? | **billing — 100%** ✅ | ~1.1 s |
-| English complaint review | Sentiment | **negative — 99.9%** ✅ | ~1.2 s |
+| Customer support | Sentiment | **negative — 100%** | ~1.1 s |
+| Customer support | Route to team | **billing — 100%** | ~1.1 s |
+| Content moderation | Policy violation? | **violation — 99.3%** | ~1.1 s |
+| Content moderation | Recommended action | **warn — 69.2%** | ~1.0 s |
+| Code-review triage | Merge risk | **high — 99.8%** | ~1.2 s |
+| Code-review triage | PR disposition | **block — 94.9%** | ~1.1 s |
+| Incident / DevOps | Severity | **sev1 — 100%** | ~1.2 s |
+| Incident / DevOps | Page on-call now? | **page_now — 100%** | ~1.1 s |
+| Email intent | Primary intent | **sales — 100%** | ~1.2 s |
+| Compliance gate | Change ticket required? | **required — 100%** | ~1.1 s |
 
 - Model load ≈ 5–17 s; each decision ≈ **1 s** on CPU (no text is generated).
 - Because SemIf reads option logits instead of decoding tokens, CPU latency stays low.
