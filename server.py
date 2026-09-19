@@ -179,6 +179,7 @@ button.mini{padding:3px 8px;font-size:12px;font-weight:500}
   <h1>⚡ JEV-CPU</h1><span class="tag">Semantic decisions · CPU · SemIf engine</span>
   <span class="spacer"></span>
   <span id="status">Checking engine…</span>
+  <button class="primary" id="runBtn" onclick="run()">▶ Run decisions</button>
 </header>
 <div class="grid">
 
@@ -197,7 +198,6 @@ button.mini{padding:3px 8px;font-size:12px;font-weight:500}
         <button class="mini" onclick="addCrit()">+ Add criterion</button>
         <button class="mini" onclick="loadOriginalExamples()" title="Load the 3 criteria from upstream SemIf examples/decisions.jsonl">↧ Load SemIf examples</button>
         <button class="mini" onclick="clearCrits()">Clear</button>
-        <button class="primary" id="runBtn" onclick="run()" style="margin-left:auto">▶ Run decisions</button>
       </div>
       <div class="hint">Each criterion = a question + 2–16 typed options (id · description). The model reads the option probabilities to decide — same schema as upstream SemIf.</div>
     </div>
