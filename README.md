@@ -55,6 +55,56 @@ flowchart LR
 
 ---
 
+## How a decision is read from logits
+
+This is the core idea, and it is why decisions are fast and cheap on a CPU: **the model never generates the answer — JEV-CPU reads it straight out of a single forward pass.** Below is the exact `direct` path (`src/semif_phase1/direct.py` + `core.py`), unchanged from upstream SemIf.
+
+**1. Turn the decision into a letter-choice prompt.**
+Each option is assigned an uppercase letter (`A`, `B`, `C`, …). The request becomes one chat turn:
+
+```
+system: Apply the supplied criterion to the supplied evidence. Choose exactly
+        one listed option. Respond with only its uppercase letter, with no
+        explanation or reasoning.
+user:   {"evidence": <state>,
+         "criterion": <question>,
+         "options": [{"letter": "A", "description": "..."},
+                     {"letter": "B", "description": "..."}, ...]}
+```
+
+The chat template is applied with `add_generation_prompt=True` and `enable_thinking=False`, so the very next token the model would emit is the answer letter.
+
+**2. Pin each option to exactly one token.**
+For every letter, `_slot_ids()` checks that the letter encodes to a **single token** that round-trips (`decode(encode("A")) == "A"`), and that appending it to the prompt does not change the prompt's tokenization. This guarantees each option maps to one clean, comparable vocabulary slot — no multi-token drift, no whitespace merges.
+
+**3. One forward pass — no decoding loop.**
+The prompt is run through the model **once**. We take the logits at the final position only — the distribution over the *next* token:
+
+```python
+logits = model(**inputs, use_cache=False).logits[:, -1, :]   # (vocab,)
+```
+
+No sampling, no `.generate()`, no answer sentence, no JSON to repair.
+
+**4. Keep only the option slots, then softmax.**
+From that full-vocabulary logit vector we gather just the option-letter token ids and softmax **over those slots alone**:
+
+```python
+selected = logits[slot_ids]          # e.g. logits at tokens A, B, C
+probs    = softmax(selected)         # conditional distribution over the options
+winner   = options[argmax(probs)]
+```
+
+The result is a probability per option, **conditional on the declared option set** — reported by JEV-CPU as `option_logits` + `probabilities`. Because it is one forward pass reading fixed positions, latency is dominated by prefill, not by generation length.
+
+> **Why it is device-agnostic:** every step above is `device = next(model.parameters()).device`; the only CUDA-specific call in the whole path is `torch.cuda.synchronize()`, guarded by `if device.type == "cuda"`. On CPU it is simply skipped — so the *same* code runs unchanged.
+
+### Reusing one state across many criteria (`shared` mode)
+
+When every criterion judges the **same** state, `shared.py` prefills that state once into a native KV cache, replicates the cache across branches (`reorder_cache`), and evaluates all criteria's option positions in one batched forward using `logits_to_keep`. One expensive prefill, many cheap decisions — see upstream SemIf's speed tables. JEV-CPU inherits this path as-is (CPU just runs it without the CUDA sync).
+
+---
+
 ## Quick start
 
 Python 3.10+, ~3 GB RAM, no GPU:

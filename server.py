@@ -109,7 +109,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 PAGE = r"""<!doctype html>
-<html lang="ko"><head>
+<html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>JEV-CPU · Semantic Decisions on CPU</title>
 <style>
@@ -178,32 +178,34 @@ button.mini{padding:3px 8px;font-size:12px;font-weight:500}
 <header>
   <h1>⚡ JEV-CPU</h1><span class="tag">Semantic decisions · CPU · SemIf engine</span>
   <span class="spacer"></span>
-  <span id="status">엔진 준비 확인 중…</span>
+  <span id="status">Checking engine…</span>
 </header>
 <div class="grid">
 
   <section class="panel" id="pData">
-    <div class="head"><span class="num">1</span> 판단할 데이터 (State / Evidence)</div>
+    <div class="head"><span class="num">1</span> State / Evidence &nbsp;<span style="color:var(--muted);font-weight:400">— data to judge</span></div>
     <div class="body">
-      <textarea id="state" placeholder="여기에 판단 대상 데이터를 입력하세요.&#10;예) 고객 리뷰, 티켓 내용, 로그, JSON 등"></textarea>
+      <textarea id="state" placeholder="Paste the data to judge here.&#10;e.g. a customer review, support ticket, log line, or JSON."></textarea>
     </div>
   </section>
 
   <section class="panel" id="pCrit">
-    <div class="head"><span class="num">2</span> 기준 추가 (Criteria)</div>
+    <div class="head"><span class="num">2</span> Criteria &nbsp;<span style="color:var(--muted);font-weight:400">— add / edit decisions</span></div>
     <div class="body">
       <div id="crits"></div>
       <div class="toolbar">
-        <button class="mini" onclick="addCrit()">+ 기준 추가</button>
-        <button class="primary" id="runBtn" onclick="run()" style="margin-left:auto">▶ 판단 실행</button>
+        <button class="mini" onclick="addCrit()">+ Add criterion</button>
+        <button class="mini" onclick="loadOriginalExamples()" title="Load the 3 criteria from upstream SemIf examples/decisions.jsonl">↧ Load SemIf examples</button>
+        <button class="mini" onclick="clearCrits()">Clear</button>
+        <button class="primary" id="runBtn" onclick="run()" style="margin-left:auto">▶ Run decisions</button>
       </div>
-      <div class="hint">각 기준 = 질문 + 옵션(2개 이상). 모델이 옵션별 확률을 읽어 결정합니다.</div>
+      <div class="hint">Each criterion = a question + 2–16 typed options (id · description). The model reads the option probabilities to decide — same schema as upstream SemIf.</div>
     </div>
   </section>
 
   <section class="panel" id="pResult">
-    <div class="head"><span class="num">3</span> 판단 결과 (Results)</div>
-    <div class="body" id="results"><div class="empty">기준을 추가하고 <b>판단 실행</b>을 누르세요.</div></div>
+    <div class="head"><span class="num">3</span> Results</div>
+    <div class="body" id="results"><div class="empty">Add criteria and click <b>Run decisions</b>.</div></div>
   </section>
 
 </div>
@@ -214,22 +216,22 @@ function addCrit(q,opts){
   CID++;
   const c=el(`<div class="crit" data-cid="${CID}">
     <div class="row">
-      <input class="q" placeholder="기준/질문 (예: 고객 감성을 분류)" value="${q||''}">
-      <button class="del mini" title="삭제">✕</button>
+      <input class="q" placeholder="Question (e.g. Classify the customer's sentiment)" value="${q||''}">
+      <button class="del mini" title="Remove criterion">✕</button>
     </div>
     <div class="opts"></div>
-    <button class="mini addopt">+ 옵션</button>
+    <button class="mini addopt">+ option</button>
   </div>`);
   c.querySelector('.del').onclick=()=>c.remove();
   c.querySelector('.addopt').onclick=()=>c.querySelector('.opts').appendChild(optRow());
   const ob=c.querySelector('.opts');
-  (opts||[['positive','긍정'],['negative','부정']]).forEach(o=>ob.appendChild(optRow(o[0],o[1])));
+  (opts||[['yes','Yes'],['no','No']]).forEach(o=>ob.appendChild(optRow(o[0],o[1])));
   document.getElementById('crits').appendChild(c);
 }
 function optRow(id,desc){
   const o=el(`<div class="opt">
     <input placeholder="id" value="${id||''}">
-    <input placeholder="설명(description)" value="${desc||''}">
+    <input placeholder="description" value="${desc||''}">
     <button class="del mini">✕</button></div>`);
   o.querySelector('.del').onclick=()=>o.remove();
   return o;
@@ -249,10 +251,10 @@ function collect(){
 async function run(){
   const {state,criteria}=collect();
   const box=document.getElementById('results');
-  if(!state){box.innerHTML='<div class="err">좌측 상단에 판단할 데이터를 입력하세요.</div>';return;}
-  if(!criteria.length){box.innerHTML='<div class="err">기준을 1개 이상 추가하세요.</div>';return;}
-  const btn=document.getElementById('runBtn');btn.disabled=true;btn.textContent='판단 중…';
-  box.innerHTML='<div class="empty">CPU 추론 중… (모델 최초 로드 시 시간이 걸릴 수 있어요)</div>';
+  if(!state){box.innerHTML='<div class="err">Enter the data to judge in the top-left panel.</div>';return;}
+  if(!criteria.length){box.innerHTML='<div class="err">Add at least one criterion.</div>';return;}
+  const btn=document.getElementById('runBtn');btn.disabled=true;btn.textContent='Deciding…';
+  box.innerHTML='<div class="empty">Running on CPU… (the first request also loads the model)</div>';
   try{
     const res=await fetch('/api/decide',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({state,criteria})});
@@ -260,7 +262,7 @@ async function run(){
     if(!res.ok){box.innerHTML='<div class="err">'+(data.error||'오류')+'</div>';return;}
     render(data);
   }catch(e){box.innerHTML='<div class="err">'+e+'</div>';}
-  finally{btn.disabled=false;btn.textContent='▶ 판단 실행';}
+  finally{btn.disabled=false;btn.textContent='▶ Run decisions';}
 }
 function render(data){
   const box=document.getElementById('results');
@@ -282,23 +284,46 @@ function render(data){
       <div class="meta">forward ${r.forward_seconds}s · ${r.input_tokens} tokens</div>
     </div>`));
   });
-  box.appendChild(el(`<div class="meta" style="text-align:right">총 ${data.total_seconds}s · ${data.model}</div>`));
+  box.appendChild(el(`<div class="meta" style="text-align:right">
+    Method: <b>JEV-CPU</b> engine (SemIf · logit readout) · Brain model: <b>${data.model}</b> · ${data.total_seconds}s total</div>`));
 }
 async function health(){
   try{const d=await (await fetch('/api/health')).json();
-    document.getElementById('status').textContent=(d.loaded?'엔진 로드됨':'첫 요청 시 모델 로드')+' · '+d.model;
-  }catch(e){document.getElementById('status').textContent='서버 연결 실패';}
+    document.getElementById('status').textContent='JEV-CPU engine · model '+d.model+(d.loaded?' (loaded)':' (loads on first request)');
+  }catch(e){document.getElementById('status').textContent='Server unreachable';}
 }
-// seed
-addCrit('고객의 감성을 분류',[['positive','긍정/만족'],['neutral','중립'],['negative','부정/불만']]);
-addCrit('어느 팀이 처리해야 하는가',[['billing','결제/환불'],['tech','기술지원'],['sales','영업']]);
-document.getElementById('state').value='배송이 3일이나 늦었고 이중 청구까지 됐어요. 환불이 필요합니다. 정말 실망입니다.';
+function clearCrits(){document.getElementById('crits').innerHTML='';}
+// 원본 SemIf examples/decisions.jsonl 의 기준(question + options) 그대로.
+const ORIGINAL_EXAMPLES={
+  state:"The deployment completed at 14:02 UTC. Health checks passed in all three zones. No rollback was initiated.",
+  criteria:[
+    ['Is there evidence that the deployment succeeded?',
+      [['yes','The deployment succeeded.'],['no','The deployment did not succeed.'],
+       ['insufficient','The evidence is insufficient to decide.']]],
+    ['Which queue should handle this request?',
+      [['account_access','Account access and authentication support.'],
+       ['billing','Billing and payment support.'],['sales','Sales and product evaluation.']]],
+    ['Does the request require an approved change ticket under the stated policy?',
+      [['required','An approved change ticket is required.'],
+       ['not_required','An approved change ticket is not required.'],
+       ['insufficient','The evidence is insufficient to decide.']]],
+  ]
+};
+function loadOriginalExamples(){
+  clearCrits();
+  document.getElementById('state').value=ORIGINAL_EXAMPLES.state;
+  ORIGINAL_EXAMPLES.criteria.forEach(([q,opts])=>addCrit(q,opts));
+}
+// seed (English default example)
+addCrit("Classify the customer's sentiment",[['positive','Positive / satisfied'],['neutral','Neutral'],['negative','Negative / dissatisfied']]);
+addCrit('Which team should handle this ticket?',[['billing','Billing / refunds'],['tech','Technical support'],['sales','Sales']]);
+document.getElementById('state').value='Delivery was 3 days late and I was double charged. I need a refund. Really disappointed.';
 health();
 </script>
 </body></html>"""
 
 
 if __name__ == "__main__":
-    print(f"[server] SemIf UI on http://0.0.0.0:{PORT}  (Ctrl+C to stop)", flush=True)
+    print(f"[server] JEV-CPU UI on http://0.0.0.0:{PORT}  (Ctrl+C to stop)", flush=True)
     get_engine()  # 시작 시 미리 로드
     ThreadingHTTPServer(("0.0.0.0", PORT), Handler).serve_forever()
