@@ -256,7 +256,7 @@ MODEL = "openbmb/MiniCPM5-2B"   # or "Qwen/Qwen3.5-4B"
 
 That is exactly what fixes the slip in the loan demo: `Qwen3-0.6B` flags *high risk* correctly but still leans *approve*; a 2B/4B brain keeps the secondary decision consistent. The trade-off is resources — a 4B model needs `transformers`' native Qwen3.5 support and more RAM/compute than this 8 GB CPU box; a GPU (SemIf's target) makes it comfortable.
 
-**Takeaway:** JEV-CPU shows the method runs anywhere; **accuracy scales with the model you point it at.**
+**Takeaway:** JEV-CPU shows the method runs anywhere; **accuracy scales with the model you point it at.** And a larger open-weight model **served on a GPU** relaxes the CPU latency wall too — lower latency, far larger inputs (toward the model's 40,960-token context), and many decisions per second via batching + shared-state reuse. That's the shape of a **production JEV** — see the report's [Outlook: GPU serving & a production JEV](https://leesk212.github.io/JEV-CPU/#outlook).
 
 ---
 

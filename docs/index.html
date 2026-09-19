@@ -99,6 +99,7 @@
   <a href="#domains">5. Qualitative results across domains</a>
   <a href="#latency">6. Latency and input-length limits</a>
   <a href="#scaling">7. Accuracy scaling with model size</a>
+  <a href="#outlook">7.1 Outlook: GPU serving &amp; a production JEV</a>
   <a href="#limitations">8. Limitations</a>
   <a href="#conclusion">9. Conclusion</a>
   <a href="#repro">10. Reproducibility</a>
@@ -240,6 +241,36 @@ accuracy floor, not the ceiling. From SemIf's own evaluation:</p>
 compute that exceed this CPU box (a 4B model wants a GPU, SemIf's target). The takeaway: <strong>JEV-CPU shows
 the method runs anywhere; accuracy scales with the model you point it at.</strong></p>
 
+<h3 id="outlook">7.1 Outlook — GPU serving and a production JEV</h3>
+<p>The two axes of this report — accuracy (§7) and CPU latency (§6) — are usually assumed to trade off, but a
+GPU relaxes <em>both at once</em>. On CPU the wall is prefill: a single 7,697-token decision took ~117&nbsp;s
+(§6). A GPU changes the regime on three fronts:</p>
+<ul>
+  <li><strong>Latency collapses.</strong> Prefill is exactly the workload GPUs are built for. SemIf reports a
+  4B model on a single RTX&nbsp;3090 returning <strong>21 binary decisions in a median 1.02&nbsp;s</strong>,
+  versus 5.3&nbsp;s to generate the equivalent JSON array — the same logit-readout path, just not latency-bound.</li>
+  <li><strong>Input size grows.</strong> With the latency wall gone, the practical input rises from our
+  ~7,700-token / ~120&nbsp;s CPU ceiling toward the model's full <strong>40,960-token</strong> context — long
+  documents, transcripts, or code diffs become decidable in one pass.</li>
+  <li><strong>Throughput multiplies.</strong> Because a decision is one forward pass reading fixed positions,
+  decisions <em>batch</em> trivially, and shared-state prefix reuse amortizes one long state across many
+  criteria. SemIf measures <strong>~20 decisions/s</strong> (777 decisions in 38.8&nbsp;s) with parallel
+  suffixes on one 3090.</li>
+</ul>
+<p>Put together, a larger open-weight model (4B+) served on a GPU is <strong>simultaneously more accurate,
+accepts far larger inputs, and answers many decisions per second</strong> — all with typed, auditable outputs
+and no generation to parse. That combination is the shape of a <strong>production, potentially commercial,
+JEV</strong>: semantic-if offered as a low-latency, high-throughput hosted service, with per-tenant models and
+batched shared-state decisions. In that framing, <strong>JEV-CPU is the floor</strong> — proof the method is
+portable to any machine — and a <strong>GPU-served larger model is the ceiling</strong> that turns the same
+engine into a product.</p>
+<div class="note">
+  <strong>Scope.</strong> We did not run GPU experiments in this report. The latency and throughput figures
+  above are SemIf's published single-GPU (RTX 3090, 4B) measurements together with projections from our own
+  CPU curve (§6) — offered as an implication, not as measured results of this work. Quantifying a GPU-served
+  JEV (tokens/s, decisions/s, cost per million decisions, batching and concurrency) is the natural next study.
+</div>
+
 <h2 id="limitations">8. Limitations</h2>
 <ul>
   <li><strong>No new method.</strong> The logit-readout mechanism is prior art; this is a port and measurement.</li>
@@ -257,7 +288,9 @@ the method runs anywhere; accuracy scales with the model you point it at.</stron
 SemIf's engine runs on a commodity CPU with a 0.6B model, decides across many domains at ~1&nbsp;s each, and
 stays memory-stable well past its default token cap. On this hardware the honest limit is latency: inputs above
 ~7,700 tokens cross the ~120&nbsp;s mark and are impractical, and small-model accuracy — not context or memory —
-is what improves by scaling the model up. JEV-CPU is offered as a reproducible, minimal demonstration of that.</p>
+is what improves by scaling the model up. JEV-CPU is offered as a reproducible, minimal demonstration of that
+floor; the same engine, given a larger open-weight model on a GPU, points toward the ceiling (§7.1) — an
+accurate, high-throughput, low-latency semantic-if service, i.e. a production JEV.</p>
 
 <h2 id="repro">10. Reproducibility</h2>
 <p>Code, the web UI, the exact scripts behind §5–§6, and all demo GIFs are public:</p>
