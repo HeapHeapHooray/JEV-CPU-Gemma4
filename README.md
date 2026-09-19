@@ -8,9 +8,9 @@
 
 [Run it locally](#quick-start) · [How it works](#how-it-works) · [Web UI](#web-ui)
 
-![JEV-CPU running live across domains: customer support, content moderation, code review, incident response, email intent, and compliance](assets/jev-cpu-demo.gif)
+![JEV-CPU running live across eight domains, typing each input and reading the decision from logits](assets/jev-cpu-demo.gif)
 
-*Live PoC — the same CPU engine deciding across six domains: **support** (sentiment + routing), **content moderation**, **code-review triage**, **incident severity**, **email intent**, and a **compliance gate**. Each answer is read from `Qwen3-0.6B`'s option logits in ~1 s, no text generated.*
+*Live PoC — the state is **typed in**, criteria are added, and the decision is read from `Qwen3-0.6B`'s option logits in ~1 s (no text generated). One CPU engine across **eight domains**: support, content moderation, code-review triage, incident severity, email intent, compliance, loan/credit risk, and support prioritization.*
 
 </div>
 
@@ -157,27 +157,128 @@ POST /api/decide
 
 ## Verified results (CPU · Qwen3-0.6B · float32)
 
-These are the exact decisions shown in the demo GIF above — one CPU engine, six domains:
+These are decisions from the demo GIF above — one CPU engine, eight domains:
 
 | Domain | Criterion | Decision | Forward |
 |---|---|---|---:|
-| Customer support | Sentiment | **negative — 100%** | ~1.1 s |
-| Customer support | Route to team | **billing — 100%** | ~1.1 s |
-| Content moderation | Policy violation? | **violation — 99.3%** | ~1.1 s |
-| Content moderation | Recommended action | **warn — 69.2%** | ~1.0 s |
-| Code-review triage | Merge risk | **high — 99.8%** | ~1.2 s |
-| Code-review triage | PR disposition | **block — 94.9%** | ~1.1 s |
-| Incident / DevOps | Severity | **sev1 — 100%** | ~1.2 s |
-| Incident / DevOps | Page on-call now? | **page_now — 100%** | ~1.1 s |
-| Email intent | Primary intent | **sales — 100%** | ~1.2 s |
-| Compliance gate | Change ticket required? | **required — 100%** | ~1.1 s |
+| Customer support | Sentiment | **negative — 97.4%** ✅ | ~1.1 s |
+| Customer support | Route to team | **billing — 100%** ✅ | ~1.0 s |
+| Content moderation | Policy violation? | **violation — 99.3%** ✅ | ~1.1 s |
+| Content moderation | Recommended action | **warn — 69.2%** ✅ | ~1.0 s |
+| Code-review triage | Merge risk | **high — 99.8%** ✅ | ~1.2 s |
+| Code-review triage | PR disposition | **block — 94.9%** ✅ | ~1.1 s |
+| Incident / DevOps | Severity | **sev1 — 100%** ✅ | ~1.2 s |
+| Incident / DevOps | Page on-call now? | **page_now — 100%** ✅ | ~1.1 s |
+| Email intent | Primary intent | **sales — 100%** ✅ | ~1.2 s |
+| Compliance gate | Change ticket required? | **required — 100%** ✅ | ~1.1 s |
+| Loan / credit risk | Credit risk | **high — 100%** ✅ | ~1.2 s |
+| Loan / credit risk | Recommended decision | **approve — 82.8%** ⚠️ | ~1.1 s |
+| Support prioritization | Priority | **p1 — 100%** ✅ | ~1.2 s |
 
 - Model load ≈ 5–17 s; each decision ≈ **1 s** on CPU (no text is generated).
 - Because SemIf reads option logits instead of decoding tokens, CPU latency stays low.
+- ⚠️ The loan **decision** row is a small-model slip: `Qwen3-0.6B` correctly flags *high risk* but still leans *approve* — an inconsistency that larger models resolve (see **[Scaling up](#scaling-up-the-brain-model)**).
 
-### ⚠️ Small-model accuracy
+### Per-domain demos (click to expand)
 
-`Qwen/Qwen3-0.6B` is the smallest browser-ladder model; SemIf's own results note it is the least accurate (authored balanced accuracy ≈ 0.44 vs ≈ 0.81 for the 4B). In practice, **terse non-English sentiment labels can be misclassified**, while clear tasks (routing, retrieval) stay correct. For higher accuracy, point `MODEL` in `semif_cpu.py` at a larger checkpoint (e.g. `openbmb/MiniCPM5-2B` or `Qwen/Qwen3.5-4B`). Note the 4B needs `transformers`' native Qwen3.5 support and more RAM, as in upstream SemIf.
+Each clip types the state in live, adds the criteria, and reads the decision from logits — on CPU.
+
+<details>
+<summary><b>🎧 Customer support</b> — sentiment + team routing</summary>
+
+![Customer support demo](assets/domains/support.gif)
+</details>
+
+<details>
+<summary><b>🛡️ Content moderation</b> — policy violation + action</summary>
+
+![Content moderation demo](assets/domains/moderation.gif)
+</details>
+
+<details>
+<summary><b>🔀 Code-review triage</b> — merge risk + PR disposition</summary>
+
+![Code-review triage demo](assets/domains/code-review.gif)
+</details>
+
+<details>
+<summary><b>🚨 Incident / DevOps</b> — severity + page on-call</summary>
+
+![Incident demo](assets/domains/incident.gif)
+</details>
+
+<details>
+<summary><b>📧 Email intent</b> — intent classification</summary>
+
+![Email intent demo](assets/domains/email-intent.gif)
+</details>
+
+<details>
+<summary><b>📋 Compliance gate</b> — change-ticket requirement</summary>
+
+![Compliance demo](assets/domains/compliance.gif)
+</details>
+
+<details>
+<summary><b>💳 Loan / credit risk</b> — risk + recommended decision</summary>
+
+![Loan risk demo](assets/domains/loan-risk.gif)
+</details>
+
+<details>
+<summary><b>⏱️ Support prioritization</b> — ticket priority</summary>
+
+![Support prioritization demo](assets/domains/prioritization.gif)
+</details>
+
+---
+
+## Scaling up the brain model
+
+The decisions above run on `Qwen/Qwen3-0.6B` — the **smallest** model on SemIf's ladder, chosen so it fits in CPU RAM. It is the accuracy floor, not the ceiling. From SemIf's own evaluation:
+
+| Brain model | Size | Authored balanced accuracy | TypeSafe subset agreement |
+|---|---:|---:|---:|
+| **Qwen3-0.6B** (JEV-CPU default) | 0.6 B | 0.440 | 0.407 |
+| MiniCPM5-2B | 2 B | 0.686 | 0.637 |
+| **Qwen3.5-4B** | 4 B | **0.813** | **0.845** |
+
+**Swapping the brain is a one-line change** — set `MODEL` in `semif_cpu.py`; the JEV-CPU engine and web UI are model-agnostic:
+
+```python
+MODEL = "openbmb/MiniCPM5-2B"   # or "Qwen/Qwen3.5-4B"
+```
+
+That is exactly what fixes the slip in the loan demo: `Qwen3-0.6B` flags *high risk* correctly but still leans *approve*; a 2B/4B brain keeps the secondary decision consistent. The trade-off is resources — a 4B model needs `transformers`' native Qwen3.5 support and more RAM/compute than this 8 GB CPU box; a GPU (SemIf's target) makes it comfortable.
+
+**Takeaway:** JEV-CPU shows the method runs anywhere; **accuracy scales with the model you point it at.**
+
+---
+
+## Input token limits
+
+Two different numbers matter — and the smaller one is **not** a limit of the small model:
+
+| Limit | Value | What it is |
+|---|---:|---|
+| Model context (`Qwen3-0.6B`) | **40,960 tokens** | The model's architectural window — large even at 0.6 B; context length comes from RoPE, independent of parameter count. |
+| JEV-CPU / SemIf default cap | **4,096 tokens / decision** | A safety guard (`max_tokens`); over-long prompts raise instead of being silently truncated. Configurable. |
+| Stable on this 8 GB CPU box | *(measured below)* | Where CPU **prefill latency**, not the model, becomes the practical ceiling. |
+
+**Measured on this 8 GB CPU box** (no GPU), one decision, growing input:
+
+| Input tokens | Forward (CPU) | Peak RAM |
+|---:|---:|---:|
+| 254 | 2.5 s | ~3.5 GB |
+| 731 | 5.6 s | ~3.5 GB |
+| 1,363 | 11.9 s | ~3.5 GB |
+| 2,629 | 26.0 s | ~3.5 GB |
+| 5,165 | 66.1 s | ~3.5 GB |
+| 7,697 | 117.4 s | ~3.5 GB |
+
+RAM stayed **flat at ~3.5 GB** even at 7,697 tokens — well past the 4,096 default and with no OOM — so on this box the ceiling is **prefill latency (≈ quadratic)**, not memory or the model. Interactive ~1 s decisions want short states (≲ ~300 tokens); long documents still work, just slower. A GPU removes this latency wall entirely.
+
+Raising the cap is a parameter, not a rebuild: pass a larger `max_tokens` to `direct_score(...)` (or `--max-tokens` in upstream SemIf's CLI). The model accepts input up to 40,960 tokens; on **CPU** the real constraint is prefill time — latency grows with length, so short states keep decisions near ~1 s.
 
 ---
 

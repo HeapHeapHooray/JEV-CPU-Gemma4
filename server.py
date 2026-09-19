@@ -184,7 +184,7 @@ button.mini{padding:3px 8px;font-size:12px;font-weight:500}
 <div class="grid">
 
   <section class="panel" id="pData">
-    <div class="head"><span class="num">1</span> State / Evidence &nbsp;<span style="color:var(--muted);font-weight:400">— data to judge</span></div>
+    <div class="head"><span class="num">1</span> State / Evidence &nbsp;<span style="color:var(--muted);font-weight:400">— data to judge · ≤ ~4,096 tok/decision (model ctx 40,960)</span></div>
     <div class="body">
       <textarea id="state" placeholder="Paste the data to judge here.&#10;e.g. a customer review, support ticket, log line, or JSON."></textarea>
     </div>
