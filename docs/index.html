@@ -61,17 +61,37 @@
   .toc a:hover{color:var(--accent)}
   footer{margin-top:50px;border-top:1px solid var(--line);padding-top:18px;color:var(--muted);font-size:13.5px}
   @media(max-width:560px){.toc{columns:1}h1{font-size:25px}}
+
   /* sticky side navigation (scroll-spy) */
   .sidenav{position:fixed;top:0;left:8px;height:100vh;width:216px;overflow-y:auto;
-    padding:26px 10px;display:none;z-index:5}
-  @media(min-width:1300px){.sidenav{display:block}}
+    padding:26px 10px;display:none;z-index:19;background:var(--bg)}
   .sidenav .navttl{color:var(--muted);text-transform:uppercase;letter-spacing:.06em;
     font-weight:700;font-size:10.5px;margin:0 10px 8px}
   .sidenav a{display:block;color:var(--muted);text-decoration:none;font-size:12.5px;line-height:1.3;
-    padding:4px 10px;border-left:2px solid transparent;border-radius:0 5px 5px 0}
+    padding:5px 10px;border-left:2px solid transparent;border-radius:0 5px 5px 0}
   .sidenav a:hover{color:var(--fg)}
   .sidenav a.active{color:var(--accent);border-left-color:var(--accent);background:var(--chip);font-weight:650}
   .sidenav a.sub{padding-left:22px;font-size:12px;opacity:.9}
+  /* wide screens: persistent left rail for the active language */
+  @media(min-width:1300px){
+    :root[data-lang="en"] .sidenav.en{display:block}
+    :root[data-lang="ko"] .sidenav.ko{display:block}
+  }
+  /* small screens: floating toggle + slide-in panel */
+  .navtoggle{position:fixed;right:16px;bottom:16px;z-index:22;display:none;width:52px;height:52px;
+    border:none;border-radius:50%;background:var(--accent);color:#fff;font-size:22px;cursor:pointer;
+    box-shadow:0 6px 20px rgba(0,0,0,.45)}
+  .navbackdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:18;display:none}
+  @media(max-width:1299px){
+    .navtoggle{display:block}
+    :root.nav-open .navbackdrop{display:block}
+    :root.nav-open[data-lang="en"] .sidenav.en,
+    :root.nav-open[data-lang="ko"] .sidenav.ko{
+      display:block;top:14px;left:14px;right:14px;width:auto;max-width:330px;height:auto;
+      max-height:78vh;border:1px solid var(--line);border-radius:14px;
+      box-shadow:0 14px 46px rgba(0,0,0,.5);z-index:21}
+  }
+
   /* language switch */
   :root[data-lang="en"] #report-ko, :root[data-lang="en"] .ko{display:none}
   :root[data-lang="ko"] #report-en, :root[data-lang="ko"] .en{display:none}
@@ -79,36 +99,39 @@
 </head>
 <body>
 
-<nav class="sidenav en" aria-label="section navigation">
+<div class="navbackdrop" onclick="closeNav()"></div>
+<button class="navtoggle" aria-label="목차 열기 / open contents" onclick="toggleNav()">☰</button>
+
+<nav class="sidenav en" aria-label="section navigation" onclick="if(event.target.tagName==='A')closeNav()">
   <div class="navttl">Contents</div>
   <a href="#intro">1. Introduction</a>
   <a href="#background">2. Background</a>
   <a href="#method">3. Method</a>
   <a href="#system">4. System (CPU port)</a>
-  <a href="#domains">5. Domain results</a>
-  <a href="#latency">6. Latency &amp; input limits</a>
-  <a href="#scaling">7. Accuracy scaling</a>
-  <a href="#outlook" class="sub">7.1 GPU / production JEV</a>
-  <a href="#limitations">8. Limitations</a>
-  <a href="#conclusion">9. Conclusion</a>
-  <a href="#repro">10. Reproducibility</a>
-  <a href="#appendix">Appendix A. Code walkthrough</a>
+  <a href="#impl">5. Implementation (in code)</a>
+  <a href="#domains">6. Domain results</a>
+  <a href="#latency">7. Latency &amp; input limits</a>
+  <a href="#scaling">8. Accuracy scaling</a>
+  <a href="#outlook" class="sub">8.1 GPU / production JEV</a>
+  <a href="#limitations">9. Limitations</a>
+  <a href="#conclusion">10. Conclusion</a>
+  <a href="#repro">11. Reproducibility</a>
   <a href="#refs">References</a>
 </nav>
-<nav class="sidenav ko" aria-label="섹션 내비게이션">
+<nav class="sidenav ko" aria-label="섹션 내비게이션" onclick="if(event.target.tagName==='A')closeNav()">
   <div class="navttl">목차</div>
   <a href="#intro-ko">1. 서론</a>
   <a href="#background-ko">2. 배경</a>
   <a href="#method-ko">3. 방법</a>
   <a href="#system-ko">4. 시스템 (CPU 포트)</a>
-  <a href="#domains-ko">5. 도메인 결과</a>
-  <a href="#latency-ko">6. 지연 · 입력 한계</a>
-  <a href="#scaling-ko">7. 정확도 스케일</a>
-  <a href="#outlook-ko" class="sub">7.1 GPU / 상용 JEV</a>
-  <a href="#limitations-ko">8. 한계</a>
-  <a href="#conclusion-ko">9. 결론</a>
-  <a href="#repro-ko">10. 재현</a>
-  <a href="#appendix-ko">부록 A. 코드 상세</a>
+  <a href="#impl-ko">5. 실증 · 구현 (코드)</a>
+  <a href="#domains-ko">6. 도메인 결과</a>
+  <a href="#latency-ko">7. 지연 · 입력 한계</a>
+  <a href="#scaling-ko">8. 정확도 스케일</a>
+  <a href="#outlook-ko" class="sub">8.1 GPU / 상용 JEV</a>
+  <a href="#limitations-ko">9. 한계</a>
+  <a href="#conclusion-ko">10. 결론</a>
+  <a href="#repro-ko">11. 재현</a>
   <a href="#refs-ko">참고문헌</a>
 </nav>
 
@@ -140,11 +163,12 @@
   Jev pattern) instead reads a decision directly from a model's <em>option logits</em> in a single
   forward pass, with no text generated. SemIf targets a GPU holding a 4B model. This report describes
   <strong>JEV-CPU</strong>, a small adaptation that runs the <em>same</em> engine on a commodity CPU with
-  a 0.6B open model, and reports measurements from an 8&nbsp;GB, GPU-less machine: qualitative decisions
-  across eight domains, a latency-versus-input-length curve, and the resulting practical input ceiling.
-  We make no claim of methodological novelty — the contribution is engineering and empirical: showing the
-  method is device-agnostic, quantifying where CPU latency (not memory or the model) becomes the limit,
-  and documenting how accuracy scales with model size.</p>
+  a 0.6B open model. It gives a full code-level account of the mechanism (§5) and reports measurements from
+  an 8&nbsp;GB, GPU-less machine: qualitative decisions across eight domains, a latency-versus-input-length
+  curve, and the resulting practical input ceiling. We make no claim of methodological novelty — the
+  contribution is engineering and empirical: showing the method is device-agnostic, documenting exactly how
+  an open-weight model becomes a decision engine in code, and quantifying where CPU latency (not memory or
+  the model) becomes the limit.</p>
 </div>
 
 <h2 id="toc">Contents</h2>
@@ -153,14 +177,14 @@
   <a href="#background">2. Background</a>
   <a href="#method">3. Method: reading a decision from logits</a>
   <a href="#system">4. System: the CPU port</a>
-  <a href="#domains">5. Qualitative results across domains</a>
-  <a href="#latency">6. Latency and input-length limits</a>
-  <a href="#scaling">7. Accuracy scaling with model size</a>
-  <a href="#outlook">7.1 Outlook: GPU serving &amp; a production JEV</a>
-  <a href="#limitations">8. Limitations</a>
-  <a href="#conclusion">9. Conclusion</a>
-  <a href="#repro">10. Reproducibility</a>
-  <a href="#appendix">Appendix A. Code-level walkthrough</a>
+  <a href="#impl">5. Implementation in code (turning a model into a decision engine)</a>
+  <a href="#domains">6. Empirical results across domains</a>
+  <a href="#latency">7. Latency and input-length limits</a>
+  <a href="#scaling">8. Accuracy scaling with model size</a>
+  <a href="#outlook">8.1 Outlook: GPU serving &amp; a production JEV</a>
+  <a href="#limitations">9. Limitations</a>
+  <a href="#conclusion">10. Conclusion</a>
+  <a href="#repro">11. Reproducibility</a>
   <a href="#refs">References</a>
 </nav>
 
@@ -201,7 +225,7 @@ their owners and are not affiliated with this work.</p>
   giving a probability per option conditional on the declared set.</li>
 </ol>
 <p>Latency is dominated by prompt <em>prefill</em>, not generation length — the property JEV-CPU relies on to
-stay usable on a CPU. Full code is in <a href="#appendix">Appendix A</a>.</p>
+stay usable on a CPU. The concrete code is dissected in <a href="#impl">§5</a>.</p>
 
 <h2 id="system">4. System: the CPU port</h2>
 <p>SemIf forces a GPU in exactly one place — its loader checks for a single CUDA device and loads with
@@ -216,7 +240,145 @@ original scoring. A standard-library web server exposes it with a three-pane UI.
   bars with the chosen option (right).</figcaption>
 </figure>
 
-<h2 id="domains">5. Qualitative results across domains</h2>
+<h2 id="impl">5. Implementation in code: turning an open-weight model into a decision engine</h2>
+<p>This is the empirical core of the report. A "JEV" / decision engine is <strong>not a fine-tune and not new
+weights</strong> — it is a specific way of <em>calling</em> an ordinary open-weight causal LM so that a typed
+decision falls out of a single forward pass. Below is the whole pipeline, function by function, as it runs in
+JEV-CPU. The scoring code is <a href="https://github.com/TheoLeeCJ/SemIf">SemIf</a>'s, reproduced verbatim;
+JEV-CPU changes only the loader (<a href="#impl-loader">§5.9</a>). Snippets are from
+<code>src/semif_phase1/{core,direct}.py</code>.</p>
+
+<h3 id="impl-overview">5.1 — Data flow at a glance</h3>
+<p>One decision travels through eight steps; no step generates text:</p>
+<pre><code>record {state, question, options}
+  → validate_row              (5.2  strict schema check)
+  → direct_messages           (5.3  option → letter, chat turns)
+  → encode_prompt             (5.5  chat template → token ids)
+      → _slot_ids             (5.4  each letter is one clean token)
+      → boundary check        (5.5  answer boundary is stable)
+  → _forward                  (5.6  ONE forward, last-position logits)
+  → gather slots + softmax    (5.8  probability per option → arg-max)
+  ⇒ decision, in ~1 forward pass</code></pre>
+
+<h3 id="impl-validate">5.2 — The record and its validation</h3>
+<p>The input is one plain record. Validation is strict, so nothing is silently coerced or truncated later:</p>
+<pre><code>def validate_row(row):
+    required = {"id", "state", "question", "options"}
+    if not required &lt;= row.keys(): raise ValueError(...)
+    json.dumps(state, ensure_ascii=False, allow_nan=False)   # finite JSON
+    if not isinstance(options, list) or not 2 &lt;= len(options) &lt;= len(LETTERS): raise ValueError(...)</code></pre>
+<p class="muted"><code>state</code> may be a nonempty string / JSON object / array; there must be 2–16 options,
+each <code>{id, description}</code>, with unique ids.</p>
+
+<h3 id="impl-prompt">5.3 — Building a letter-choice prompt</h3>
+<p>Each option is assigned an uppercase letter; the record becomes a two-turn chat whose system turn forbids
+anything but a single letter. This is what makes the <em>next</em> token carry the whole decision:</p>
+<pre><code>LETTERS = "ABCDEFGHIJKLMNOP"
+DIRECT_SYSTEM = ("Apply the supplied criterion to the supplied evidence. "
+                 "Choose exactly one listed option. Respond with only its "
+                 "uppercase letter, with no explanation or reasoning.")
+
+def direct_messages(row):
+    payload = {"evidence": row["state"], "criterion": row["question"],
+               "options": [{"letter": LETTERS[i], "description": o["description"]}
+                           for i, o in enumerate(row["options"])]}
+    return [{"role":"system","content":DIRECT_SYSTEM},
+            {"role":"user","content":json.dumps(payload, ensure_ascii=False)}]</code></pre>
+
+<h3 id="impl-slots">5.4 — Pinning each option to exactly one token</h3>
+<p>The readout compares the model's probability of each answer letter, so each letter must be a single, clean
+vocabulary slot — one round-tripping token, no collisions:</p>
+<pre><code>def _slot_ids(tokenizer, count):
+    result = []
+    for letter in LETTERS[:count]:
+        encoded = tokenizer.encode(letter, add_special_tokens=False)
+        if len(encoded) != 1 or tokenizer.decode(encoded) != letter:
+            raise ValueError(f"Answer slot {letter!r} is not one exact round-trip token")
+        result.append(encoded[0])
+    if len(result) != len(set(result)): raise ValueError("Answer-slot tokens collide")
+    return result            # token ids for A, B, C, ...</code></pre>
+
+<h3 id="impl-encode">5.5 — Encoding and verifying the answer boundary</h3>
+<p>The chat template is applied with the generation prompt on and thinking disabled, then two invariants are
+asserted: the prompt fits the token budget (no silent truncation), and appending any letter extends the
+tokenization by exactly that one slot token — the prompt/answer boundary is stable:</p>
+<pre><code>def encode_prompt(tokenizer, row, max_tokens):
+    prompt = tokenizer.apply_chat_template(direct_messages(row), tokenize=False,
+        add_generation_prompt=True, enable_thinking=False)
+    ids = tokenizer.encode(prompt, add_special_tokens=False)
+    if not ids or len(ids) &gt; max_tokens: raise ValueError("exceeds limit; no truncation")
+    slots = _slot_ids(tokenizer, len(row["options"]))
+    for letter, token in zip(LETTERS, slots):
+        if tokenizer.encode(prompt + letter, add_special_tokens=False) != ids + [token]:
+            raise ValueError(f"Answer boundary changes tokenization for slot {letter}")
+    return ids, slots, digest(prompt)   # sha256 for auditability</code></pre>
+
+<h3 id="impl-forward">5.6 — One forward pass, last-position logits</h3>
+<p>The whole model runs <strong>once</strong>; we keep only the final position — the distribution over the next
+token. <code>logits_to_keep=1</code> avoids materializing a full-sequence logit tensor. No sampling, no loop:</p>
+<pre><code>def _forward(model, inputs):
+    params = inspect.signature(model.forward).parameters
+    kwargs = dict(inputs, use_cache=False, return_dict=True)
+    if "logits_to_keep" in params: kwargs["logits_to_keep"] = 1
+    return model(**kwargs).logits[:, -1, :]     # (batch, vocab); no sampling</code></pre>
+
+<h3 id="impl-device">5.7 — Device handling: why it is CPU-agnostic</h3>
+<p>The scoring function reads whatever device the model is on and only synchronizes under CUDA. These two lines
+are the entire reason the same code runs on a GPU or a CPU unchanged:</p>
+<pre><code>device = next(model.parameters()).device          # follow the model
+if device.type == "cuda": torch.cuda.synchronize(device)   # no-op on CPU</code></pre>
+
+<h3 id="impl-score">5.8 — Gather the slots, softmax, decide</h3>
+<p>From the full-vocabulary logit vector we index only the option-letter tokens and softmax over those,
+producing a probability per option (conditional on the declared set); the winner is the arg-max:</p>
+<pre><code>def score(model, tokenizer, row, metadata, max_tokens=4096):
+    ids, slots, prompt_hash = encode_prompt(tokenizer, row, max_tokens)
+    device = next(model.parameters()).device
+    inputs = {"input_ids": torch.tensor([ids], device=device),
+              "attention_mask": torch.ones((1, len(ids)), device=device)}
+    if device.type == "cuda": torch.cuda.synchronize(device)
+    with torch.inference_mode():
+        vocabulary = _forward(model, inputs)[0].float()        # (vocab,)
+    selected = vocabulary[slots].cpu().tolist()   # logits at A, B, C, ...
+    return {"option_ids":[o["id"] for o in row["options"]],
+            "option_logits": selected, "probabilities": softmax(selected), ...}</code></pre>
+<p>That is the entire "JEV-ification": a stock <code>AutoModelForCausalLM</code> is never asked to generate;
+it is asked once for its next-token logits, and the decision is the arg-max over the option slots.</p>
+
+<h3 id="impl-loader">5.9 — The only change to run on CPU</h3>
+<div class="tablewrap">
+<table>
+  <thead><tr><th>SemIf — <code>load_causal_model</code> (GPU)</th><th>JEV-CPU — <code>load_causal_model_cpu</code></th></tr></thead>
+  <tbody><tr>
+  <td><pre style="margin:0"><code>if not torch.cuda.is_available() \
+   or torch.cuda.device_count() != 1:
+    raise ValueError("Expose exactly "
+        "one CUDA GPU ...")
+model = cls.from_pretrained(
+    source, config=config,
+    dtype=torch.bfloat16,
+    device_map={"": "cuda:0"},
+    low_cpu_mem_usage=True, **common)</code></pre></td>
+  <td><pre style="margin:0"><code># no CUDA check, no device_map
+model = AutoModelForCausalLM.from_pretrained(
+    source, config=config,
+    dtype=torch.float32,   # CPU-stable
+    low_cpu_mem_usage=True, **common)
+model.eval()</code></pre></td>
+  </tr></tbody>
+</table>
+</div>
+<p>Because §5.7–§5.8 derive the device from the model, loading on CPU is sufficient; the same scoring code runs
+with the CUDA sync skipped. Swapping the brain is the one other knob: set <code>MODEL</code> to any causal LM
+whose answer letters are single tokens.</p>
+
+<h3 id="impl-shared">5.10 — Reusing one state across many criteria (shared mode)</h3>
+<p>When many criteria judge the same <code>state</code>, <code>shared.py</code> prefills it once into a KV cache,
+replicates the cache with <code>cache.reorder_cache(...)</code>, and evaluates every criterion's answer position
+in one batched forward via a vector <code>logits_to_keep</code> — one prefill, many decisions; also CUDA-synced
+only under CUDA. This is the path that makes high-throughput serving cheap (<a href="#outlook">§8.1</a>).</p>
+
+<h2 id="domains">6. Empirical results across domains</h2>
 <p>Using <code>Qwen/Qwen3-0.6B</code> in <code>float32</code> on CPU, the same engine ran across eight
 domains (Figure 1); each decision took ≈1&nbsp;s.</p>
 <div class="tablewrap">
@@ -240,9 +402,9 @@ domains (Figure 1); each decision took ≈1&nbsp;s.</p>
 </table>
 </div>
 <p class="muted">Single illustrative runs, not a benchmark. The loan <em>decision</em> row is a deliberate
-example of a small-model slip (see <a href="#limitations">§8</a>).</p>
+example of a small-model slip (see <a href="#limitations">§9</a>).</p>
 
-<h2 id="latency">6. Latency and input-length limits</h2>
+<h2 id="latency">7. Latency and input-length limits</h2>
 <p>Two numbers are often conflated. The model's context window is <strong>40,960 tokens</strong> — large even
 at 0.6B. SemIf's engine caps a decision at <strong>4,096 tokens</strong> by default (a guard; configurable).
 Neither is the real constraint on CPU. Measured on the 8&nbsp;GB CPU box, one decision with growing input:</p>
@@ -267,7 +429,7 @@ latency (≈ quadratic)</strong>, not memory or the model.</p>
   inputs are considered unsupported here. Interactive ~1&nbsp;s decisions want short states (≲~300 tokens).
 </div>
 
-<h2 id="scaling">7. Accuracy scaling with model size</h2>
+<h2 id="scaling">8. Accuracy scaling with model size</h2>
 <p><code>Qwen3-0.6B</code> is the smallest model on SemIf's ladder, the accuracy floor. From SemIf's evaluation:</p>
 <div class="tablewrap">
 <table>
@@ -282,16 +444,16 @@ latency (≈ quadratic)</strong>, not memory or the model.</p>
 <p>The engine is model-agnostic, so moving up is a one-line change (<code>MODEL = …</code>), at the cost of
 RAM/compute beyond this box. <strong>The method runs anywhere; accuracy scales with the model you point it at.</strong></p>
 
-<h3 id="outlook">7.1 Outlook — GPU serving and a production JEV</h3>
-<p>Accuracy (§7) and CPU latency (§6) are usually assumed to trade off, but a GPU relaxes <em>both at once</em>:</p>
+<h3 id="outlook">8.1 Outlook — GPU serving and a production JEV</h3>
+<p>Accuracy (§8) and CPU latency (§7) are usually assumed to trade off, but a GPU relaxes <em>both at once</em>:</p>
 <ul>
   <li><strong>Latency collapses.</strong> Prefill is what GPUs are built for. SemIf reports a 4B model on one
   RTX&nbsp;3090 returning <strong>21 binary decisions in a median 1.02&nbsp;s</strong> (vs 5.3&nbsp;s to generate
   the equivalent JSON) — the same readout, just not latency-bound.</li>
   <li><strong>Input size grows.</strong> With the wall gone, practical input rises from ~7,700 tokens / ~120&nbsp;s
   toward the model's full <strong>40,960-token</strong> context — long documents, transcripts, code diffs in one pass.</li>
-  <li><strong>Throughput multiplies.</strong> A decision is one forward pass, so decisions <em>batch</em>; shared-state
-  prefix reuse amortizes a long state across criteria. SemIf measures <strong>~20 decisions/s</strong> on one 3090.</li>
+  <li><strong>Throughput multiplies.</strong> A decision is one forward pass, so decisions <em>batch</em>; the
+  shared-state path (§5.10) amortizes a long state across criteria. SemIf measures <strong>~20 decisions/s</strong> on one 3090.</li>
 </ul>
 <p>Together, a larger open-weight model (4B+) on a GPU is <strong>simultaneously more accurate, accepts far larger
 inputs, and answers many decisions per second</strong> — with typed, auditable outputs and nothing to parse. That is
@@ -300,29 +462,30 @@ hosted service. <strong>JEV-CPU is the floor</strong> (portable to any machine);
 the ceiling</strong> that turns the same engine into a product.</p>
 <div class="note">
   <strong>Scope.</strong> We did not run GPU experiments here. The GPU latency/throughput figures are SemIf's
-  published single-GPU (RTX 3090, 4B) measurements plus projections from our CPU curve (§6) — an implication, not
+  published single-GPU (RTX 3090, 4B) measurements plus projections from our CPU curve (§7) — an implication, not
   our own results. Quantifying a GPU-served JEV (tokens/s, decisions/s, cost, concurrency) is the natural next study.
 </div>
 
-<h2 id="limitations">8. Limitations</h2>
+<h2 id="limitations">9. Limitations</h2>
 <ul>
   <li><strong>No new method.</strong> The logit-readout mechanism is prior art; this is a port and measurement.</li>
   <li><strong>Small-model errors.</strong> At 0.6B secondary decisions can be inconsistent (the loan case flags
-  <em>high risk</em> yet leans <em>approve</em>); larger models resolve this (§7).</li>
-  <li><strong>Not a benchmark.</strong> §5 shows single runs; quantitative accuracy lives in SemIf's repo (cited in §7).</li>
+  <em>high risk</em> yet leans <em>approve</em>); larger models resolve this (§8).</li>
+  <li><strong>Not a benchmark.</strong> §6 shows single runs; quantitative accuracy lives in SemIf's repo (cited in §8).</li>
   <li><strong>Single-machine measurements.</strong> Latencies are from one 8&nbsp;GB CPU box and vary with hardware.</li>
   <li><strong>Probabilities are conditional</strong> on the declared options and uncalibrated as confidence.</li>
 </ul>
 
-<h2 id="conclusion">9. Conclusion</h2>
-<p>Decision-native, logit-readout inference is not tied to a GPU or a large model. With only a loader change,
-SemIf's engine runs on a commodity CPU with a 0.6B model, decides across many domains at ~1&nbsp;s each, and stays
-memory-stable well past its default token cap. On this hardware the honest limit is latency: inputs above ~7,700
-tokens cross the ~120&nbsp;s mark, and small-model accuracy — not context or memory — is what improves by scaling up.
-JEV-CPU is the reproducible floor; the same engine, given a larger open-weight model on a GPU, points toward the
-ceiling (§7.1) — an accurate, high-throughput, low-latency semantic-if service, i.e. a production JEV.</p>
+<h2 id="conclusion">10. Conclusion</h2>
+<p>Decision-native, logit-readout inference is not tied to a GPU or a large model. As §5 shows in code, an
+ordinary open-weight model becomes a decision engine with a loader change alone; SemIf's engine then runs on a
+commodity CPU with a 0.6B model, decides across many domains at ~1&nbsp;s each, and stays memory-stable well past
+its default token cap. On this hardware the honest limit is latency: inputs above ~7,700 tokens cross the
+~120&nbsp;s mark, and small-model accuracy — not context or memory — is what improves by scaling up. JEV-CPU is the
+reproducible floor; the same engine, given a larger open-weight model on a GPU, points toward the ceiling (§8.1) —
+an accurate, high-throughput, low-latency semantic-if service, i.e. a production JEV.</p>
 
-<h2 id="repro">10. Reproducibility</h2>
+<h2 id="repro">11. Reproducibility</h2>
 <ul>
   <li>GitHub — <a href="https://github.com/leesk212/JEV-CPU">github.com/leesk212/JEV-CPU</a></li>
   <li>Hugging Face — <a href="https://huggingface.co/Meanblock/JEV-CPU">huggingface.co/Meanblock/JEV-CPU</a></li>
@@ -333,118 +496,12 @@ pip install transformers accelerate
 python semif_cpu.py      # CLI: typed option probabilities
 python server.py         # web UI on http://localhost:8080</code></pre>
 
-<hr>
-
-<h2 id="appendix">Appendix A. Code-level walkthrough: turning an open-weight model into a decision engine</h2>
-<p>A "JEV" / decision engine is <strong>not a fine-tune and not new weights</strong> — it is a way of
-<em>calling</em> an ordinary open-weight causal LM so a typed decision falls out of a single forward pass. The
-scoring code is <a href="https://github.com/TheoLeeCJ/SemIf">SemIf</a>'s, reproduced verbatim; JEV-CPU changes
-only the loader (<a href="#a7">A.7</a>). Snippets from <code>src/semif_phase1/{core,direct}.py</code>.</p>
-
-<h3 id="a1">A.1 — The record and its validation</h3>
-<pre><code>def validate_row(row):
-    required = {"id", "state", "question", "options"}
-    if not required &lt;= row.keys(): raise ValueError(...)
-    json.dumps(state, ensure_ascii=False, allow_nan=False)   # finite JSON
-    if not isinstance(options, list) or not 2 &lt;= len(options) &lt;= len(LETTERS): raise ValueError(...)</code></pre>
-
-<h3 id="a2">A.2 — Building a letter-choice prompt</h3>
-<pre><code>LETTERS = "ABCDEFGHIJKLMNOP"
-DIRECT_SYSTEM = ("Apply the supplied criterion to the supplied evidence. "
-                 "Choose exactly one listed option. Respond with only its "
-                 "uppercase letter, with no explanation or reasoning.")
-
-def direct_messages(row):
-    payload = {"evidence": row["state"], "criterion": row["question"],
-               "options": [{"letter": LETTERS[i], "description": o["description"]}
-                           for i, o in enumerate(row["options"])]}
-    return [{"role":"system","content":DIRECT_SYSTEM},
-            {"role":"user","content":json.dumps(payload, ensure_ascii=False)}]</code></pre>
-
-<h3 id="a3">A.3 — Pinning each option to exactly one token</h3>
-<pre><code>def _slot_ids(tokenizer, count):
-    result = []
-    for letter in LETTERS[:count]:
-        encoded = tokenizer.encode(letter, add_special_tokens=False)
-        if len(encoded) != 1 or tokenizer.decode(encoded) != letter:
-            raise ValueError(f"Answer slot {letter!r} is not one exact round-trip token")
-        result.append(encoded[0])
-    if len(result) != len(set(result)): raise ValueError("Answer-slot tokens collide")
-    return result            # token ids for A, B, C, ...</code></pre>
-
-<h3 id="a4">A.4 — Encoding and verifying the answer boundary</h3>
-<pre><code>def encode_prompt(tokenizer, row, max_tokens):
-    prompt = tokenizer.apply_chat_template(direct_messages(row), tokenize=False,
-        add_generation_prompt=True, enable_thinking=False)
-    ids = tokenizer.encode(prompt, add_special_tokens=False)
-    if not ids or len(ids) &gt; max_tokens: raise ValueError("exceeds limit; no truncation")
-    slots = _slot_ids(tokenizer, len(row["options"]))
-    for letter, token in zip(LETTERS, slots):
-        if tokenizer.encode(prompt + letter, add_special_tokens=False) != ids + [token]:
-            raise ValueError(f"Answer boundary changes tokenization for slot {letter}")
-    return ids, slots, digest(prompt)   # sha256 for auditability</code></pre>
-
-<h3 id="a5">A.5 — One forward pass, last-position logits</h3>
-<pre><code>def _forward(model, inputs):
-    params = inspect.signature(model.forward).parameters
-    kwargs = dict(inputs, use_cache=False, return_dict=True)
-    if "logits_to_keep" in params: kwargs["logits_to_keep"] = 1
-    return model(**kwargs).logits[:, -1, :]     # (batch, vocab); no sampling</code></pre>
-
-<h3 id="a6">A.6 — Gather the slots, softmax, decide</h3>
-<pre><code>def score(model, tokenizer, row, metadata, max_tokens=4096):
-    import torch
-    ids, slots, prompt_hash = encode_prompt(tokenizer, row, max_tokens)
-    device = next(model.parameters()).device          # follow the model
-    inputs = {"input_ids": torch.tensor([ids], device=device),
-              "attention_mask": torch.ones((1, len(ids)), device=device)}
-    if device.type == "cuda": torch.cuda.synchronize(device)   # no-op on CPU
-    with torch.inference_mode():
-        vocabulary = _forward(model, inputs)[0].float()        # (vocab,)
-    selected = vocabulary[slots].cpu().tolist()   # logits at A, B, C, ...
-    return {"option_ids":[o["id"] for o in row["options"]],
-            "option_logits": selected, "probabilities": softmax(selected), ...}</code></pre>
-<p>That is the entire "JEV-ification": a stock <code>AutoModelForCausalLM</code> is never asked to generate;
-it is asked once for its next-token logits, and the decision is the arg-max over the option slots.</p>
-
-<h3 id="a7">A.7 — The only change to run on CPU</h3>
-<div class="tablewrap">
-<table>
-  <thead><tr><th>SemIf — <code>load_causal_model</code> (GPU)</th><th>JEV-CPU — <code>load_causal_model_cpu</code></th></tr></thead>
-  <tbody><tr>
-  <td><pre style="margin:0"><code>if not torch.cuda.is_available() \
-   or torch.cuda.device_count() != 1:
-    raise ValueError("Expose exactly "
-        "one CUDA GPU ...")
-model = cls.from_pretrained(
-    source, config=config,
-    dtype=torch.bfloat16,
-    device_map={"": "cuda:0"},
-    low_cpu_mem_usage=True, **common)</code></pre></td>
-  <td><pre style="margin:0"><code># no CUDA check, no device_map
-model = AutoModelForCausalLM.from_pretrained(
-    source, config=config,
-    dtype=torch.float32,   # CPU-stable
-    low_cpu_mem_usage=True, **common)
-model.eval()</code></pre></td>
-  </tr></tbody>
-</table>
-</div>
-<p>Because <code>score()</code> derives its device from the model, loading on CPU is sufficient; the same scoring
-code runs with the CUDA sync skipped. Swapping the brain is the one other knob: set <code>MODEL</code> to any
-causal LM whose answer letters are single tokens.</p>
-
-<h3 id="a8">A.8 — Reusing one state across many criteria (shared mode)</h3>
-<p><code>shared.py</code> prefills the state once into a KV cache, replicates it with
-<code>cache.reorder_cache(...)</code>, and evaluates every criterion's answer position in one batched forward via
-a vector <code>logits_to_keep</code> — one prefill, many decisions; also CUDA-synced only under CUDA.</p>
-
 <h2 id="refs">References</h2>
 <ol class="refs">
   <li>T. Lee (TheoLeeCJ). <em>SemIf — Semantic ifs from open models.</em> <a href="https://github.com/TheoLeeCJ/SemIf">github.com/TheoLeeCJ/SemIf</a>. Demo: <a href="https://openjev.com/">openjev.com</a>.</li>
   <li>TypeSafe. <em>Jev</em> (closed service). Names/marks belong to their owners; this work is independent and unaffiliated.</li>
   <li>Qwen Team. <em>Qwen3-0.6B.</em> <a href="https://huggingface.co/Qwen/Qwen3-0.6B">huggingface.co/Qwen/Qwen3-0.6B</a>.</li>
-  <li>A. Liu et&nbsp;al. <em>WANLI.</em> <a href="https://huggingface.co/datasets/alisawuffles/WANLI">dataset</a> (used in SemIf's §7 evaluation).</li>
+  <li>A. Liu et&nbsp;al. <em>WANLI.</em> <a href="https://huggingface.co/datasets/alisawuffles/WANLI">dataset</a> (used in SemIf's §8 evaluation).</li>
   <li>Released under the MIT License.</li>
 </ol>
 
@@ -455,14 +512,14 @@ a vector <code>logits_to_keep</code> — one prefill, many decisions; also CUDA-
 
 <div class="abstract">
   <p><strong>초록.</strong> <em>Semantic-if</em> 결정 — <em>이걸 어디로 보낼까</em>, <em>정책 위반인가</em>,
-  <em>이 인시던트의 심각도는</em> — 는 보통 챗 모델이 텍스트를 생성하고 소프트웨어가 그걸 다시 분기로 파싱하는
-  식으로 처리됩니다. SemIf(TypeSafe의 Jev 패턴을 오픈 모델로 재현)는 대신, 텍스트를 생성하지 않고 모델의
-  <em>옵션 로짓</em>을 <strong>단 한 번의 forward</strong>로 읽어 결정을 냅니다. SemIf는 4B 모델을 담는 GPU를
-  전제로 합니다. 본 리포트는 <strong>JEV-CPU</strong>, 즉 <em>동일한</em> 엔진을 0.6B 오픈 모델로 일반 CPU에서
-  돌리는 작은 적응을 기술하고, GPU 없는 8&nbsp;GB 머신에서의 측정을 보고합니다: 8개 도메인의 정성 결정, 입력
-  길이 대비 지연 곡선, 그로부터 도출한 실용 입력 상한. 방법론적 신규성은 주장하지 않으며, 기여는 엔지니어링과
-  실증입니다 — 이 방법이 디바이스 독립적임을 보이고, (메모리·모델이 아니라) CPU 지연이 한계가 되는 지점을
-  정량화하며, 정확도가 모델 크기에 따라 어떻게 스케일되는지를 문서화합니다.</p>
+  <em>이 인시던트의 심각도는</em> — 은 보통 챗 모델이 텍스트를 생성하고 소프트웨어가 그 텍스트를 다시 분기로
+  파싱하는 방식으로 처리된다. SemIf(TypeSafe의 Jev 패턴을 오픈 모델로 재현한 프로젝트)는 텍스트를 생성하지 않고
+  모델의 <em>옵션 로짓</em>을 단 한 번의 forward로 읽어 결정을 낸다. SemIf는 4B 모델을 올릴 GPU를 전제로 한다.
+  본 리포트는 동일한 엔진을 0.6B 오픈 모델로 일반 CPU에서 돌리는 소규모 적응인 <strong>JEV-CPU</strong>를
+  기술한다. 메커니즘을 코드 수준에서 온전히 해부하고(§5), GPU가 없는 8&nbsp;GB 머신에서의 측정을 보고한다.
+  8개 도메인의 정성적 결정, 입력 길이에 따른 지연 곡선, 그리고 거기서 도출한 실용 입력 상한이다. 방법론적 신규성은
+  주장하지 않는다. 기여는 엔지니어링과 실증에 있다. 이 방법이 디바이스에 독립적임을 보이고, 오픈웨이트 모델이 코드
+  수준에서 어떻게 결정 엔진이 되는지를 문서화하며, 메모리나 모델이 아니라 CPU 지연이 한계가 되는 지점을 정량화한다.</p>
 </div>
 
 <h2 id="toc-ko">목차</h2>
@@ -471,199 +528,99 @@ a vector <code>logits_to_keep</code> — one prefill, many decisions; also CUDA-
   <a href="#background-ko">2. 배경</a>
   <a href="#method-ko">3. 방법: 로짓에서 결정 읽기</a>
   <a href="#system-ko">4. 시스템: CPU 포트</a>
-  <a href="#domains-ko">5. 도메인별 정성 결과</a>
-  <a href="#latency-ko">6. 지연과 입력 길이 한계</a>
-  <a href="#scaling-ko">7. 모델 크기에 따른 정확도 스케일</a>
-  <a href="#outlook-ko">7.1 전망: GPU 서빙과 상용 JEV</a>
-  <a href="#limitations-ko">8. 한계</a>
-  <a href="#conclusion-ko">9. 결론</a>
-  <a href="#repro-ko">10. 재현</a>
-  <a href="#appendix-ko">부록 A. 코드 레벨 상세</a>
+  <a href="#impl-ko">5. 실증 · 코드로 보는 구현</a>
+  <a href="#domains-ko">6. 도메인별 실증 결과</a>
+  <a href="#latency-ko">7. 지연과 입력 길이 한계</a>
+  <a href="#scaling-ko">8. 모델 크기에 따른 정확도 스케일</a>
+  <a href="#outlook-ko">8.1 전망: GPU 서빙과 상용 JEV</a>
+  <a href="#limitations-ko">9. 한계</a>
+  <a href="#conclusion-ko">10. 결론</a>
+  <a href="#repro-ko">11. 재현</a>
   <a href="#refs-ko">참고문헌</a>
 </nav>
 
 <figure>
   <img src="assets/jev-cpu-demo.gif" alt="JEV-CPU가 CPU에서 8개 도메인에 대해 실시간으로 결정하는 모습">
-  <figcaption>그림 1. JEV-CPU가 CPU에서 8개 도메인에 걸쳐 실시간 실행: state를 입력하고, 기준을 추가하면, 각
-  결정이 <code>Qwen3-0.6B</code>의 옵션 로짓에서 ~1초 만에 읽힙니다 — 텍스트 생성 없음.</figcaption>
+  <figcaption>그림 1. JEV-CPU가 CPU에서 8개 도메인에 걸쳐 실시간으로 동작한다. state를 입력하고 기준을 추가하면,
+  각 결정이 <code>Qwen3-0.6B</code>의 옵션 로짓에서 약 1초 만에 읽힌다 — 텍스트 생성은 없다.</figcaption>
 </figure>
 
 <h2 id="intro-ko">1. 서론</h2>
-<p>소프트웨어 에이전트의 결정 대부분은 작고 타입이 정해져 있습니다: 큐 선택, 심각도 선택, 증거가 주장을
-뒷받침하는지 판단 등. 챗 모델도 답할 수 있지만, 답 문장을 생성해 다시 <code>if</code>로 파싱하는 것은 느리고
-취약합니다. <em>결정-네이티브</em> 대안은 옵션을 토큰으로 제시하고, 바로 그 토큰들에 대한 모델의 확률을 한 번의
-forward로 읽는 것입니다. TypeSafe의 비공개 <em>Jev</em> 서비스가 이 인터페이스를 알렸고,
-<a href="https://github.com/TheoLeeCJ/SemIf">SemIf</a>가 오픈 모델로 이 패턴을 GPU에서 재현했습니다.</p>
-<p>본 리포트는 좁고 실용적인 질문을 던집니다: <strong>GPU 없이, 아주 작은 모델로도 이 방법이 동작하는가,
-그리고 어디서 무너지는가?</strong></p>
+<p>소프트웨어 에이전트가 내리는 결정은 대개 작고 타입이 정해져 있다. 큐를 고르고, 심각도를 정하고, 증거가
+주장을 뒷받침하는지 판단한다. 챗 모델로도 답할 수 있지만, 답 문장을 생성한 뒤 다시 <code>if</code>로 파싱하는
+방식은 느리고 취약하다. <em>결정-네이티브</em> 대안은 옵션을 토큰으로 제시하고, 바로 그 토큰들에 대한 모델의
+확률을 한 번의 forward로 읽는 것이다. TypeSafe의 비공개 서비스 <em>Jev</em>가 이 인터페이스를 알렸고,
+<a href="https://github.com/TheoLeeCJ/SemIf">SemIf</a>가 이를 오픈 모델과 GPU로 재현했다.</p>
+<p>본 리포트는 좁고 실용적인 질문을 던진다. <strong>GPU 없이, 아주 작은 모델로도 이 방법이 동작하는가? 그리고
+어디에서 무너지는가?</strong></p>
 
 <h2 id="background-ko">2. 배경</h2>
-<p>텍스트를 샘플링하는 대신 LM의 다음-토큰 분포에서 범주형 결정을 읽는 것은 잘 확립된 아이디어입니다
-(verbalizer 기반 zero-shot 분류, 답-토큰 스코어링, NLI 크로스-인코더 등). 이 메커니즘에 <strong>신규성은
-주장하지 않습니다.</strong> JEV-CPU는 SemIf의 CPU 적응 및 실증 연구이며, SemIf 자체가 Jev 패턴의 독립적
-재현입니다. Jev·TypeSafe는 각 소유자의 자산이며 본 작업과 무관합니다.</p>
+<p>텍스트를 샘플링하는 대신 LM의 다음-토큰 분포에서 범주형 결정을 읽는 것은 이미 잘 확립된 아이디어다
+(verbalizer 기반 zero-shot 분류, 답-토큰 스코어링, NLI 크로스-인코더 등). 이 메커니즘 자체에는 새로움이 없다.
+JEV-CPU는 SemIf의 CPU 적응이자 실증 연구이고, SemIf 역시 Jev 패턴을 독립적으로 재현한 것이다. Jev와 TypeSafe는
+각 소유자의 자산이며 본 작업과는 무관하다.</p>
 
 <h2 id="method-ko">3. 방법: 로짓에서 결정 읽기</h2>
-<p>하나의 결정은 하나의 레코드입니다: <code>state</code>(증거), <code>question</code>(기준),
-2–16개의 타입드 <code>options</code>. <code>direct</code> 스코어링 경로(SemIf 그대로)는:</p>
+<p>하나의 결정은 하나의 레코드다. <code>state</code>(증거), <code>question</code>(기준), 그리고 2–16개의 타입드
+<code>options</code>로 이루어진다. <code>direct</code> 스코어링 경로는 SemIf 그대로이며 다음과 같다.</p>
 <ol>
-  <li><strong>레터-초이스 프롬프트.</strong> 각 옵션에 <code>A</code>, <code>B</code>, <code>C</code>…를 부여;
-  시스템 턴이 "대문자 한 글자만" 답하게 하여 다음 토큰이 곧 답이 됩니다.</li>
-  <li><strong>단일 토큰 고정.</strong> 각 레터가 토큰화를 흔들지 않고 정확히 1토큰으로 round-trip됨을 검증 —
-  옵션마다 깨끗한 어휘 슬롯 하나.</li>
-  <li><strong>1회 forward.</strong> 프롬프트를 한 번 실행하고 마지막 위치의 로짓만 취합니다. 샘플링·디코딩 루프·
-  JSON 복구 없음.</li>
-  <li><strong>슬롯에 대한 softmax.</strong> 옵션 레터 토큰만 모아 softmax하여, 선언된 옵션 집합에 조건부인
-  옵션별 확률을 얻습니다.</li>
+  <li><strong>레터-초이스 프롬프트.</strong> 각 옵션에 <code>A</code>, <code>B</code>, <code>C</code>…를 붙인다.
+  시스템 턴이 "대문자 한 글자만" 답하도록 제약하므로, 생성될 다음 토큰이 곧 답이 된다.</li>
+  <li><strong>단일 토큰 고정.</strong> 각 레터가 토큰화를 흔들지 않고 정확히 1토큰으로 round-trip되는지 검증한다.
+  옵션마다 깨끗한 어휘 슬롯 하나가 대응된다.</li>
+  <li><strong>1회 forward.</strong> 프롬프트를 한 번만 실행하고 마지막 위치의 로짓만 취한다. 샘플링도, 디코딩
+  루프도, 복구할 JSON도 없다.</li>
+  <li><strong>슬롯에 대한 softmax.</strong> 옵션 레터 토큰만 모아 softmax를 취해, 선언된 옵션 집합에 조건부인
+  옵션별 확률을 얻는다.</li>
 </ol>
-<p>지연은 생성 길이가 아니라 프롬프트 <em>prefill</em>이 지배하며, 이것이 JEV-CPU가 CPU에서 쓸 만한 이유입니다.
-전체 코드는 <a href="#appendix-ko">부록 A</a> 참조.</p>
+<p>지연은 생성 길이가 아니라 프롬프트 <em>prefill</em>이 지배한다. JEV-CPU가 CPU에서 쓸 만한 이유가 바로 이
+성질이다. 구체적인 코드는 <a href="#impl-ko">§5</a>에서 해부한다.</p>
 
 <h2 id="system-ko">4. 시스템: CPU 포트</h2>
-<p>SemIf가 GPU를 강제하는 곳은 정확히 한 군데 — 로더가 단일 CUDA 디바이스를 확인하고
-<code>device_map={"":"cuda:0"}</code>, <code>bfloat16</code>으로 로드합니다. 그 이후는 모두 디바이스 독립적입니다:
-스코어링 코드는 <code>device = next(model.parameters()).device</code>를 따르고, 유일한 CUDA 전용 호출인
-<code>torch.cuda.synchronize()</code>는 <code>if device.type == "cuda"</code>로 가드됩니다(CPU에선 no-op).
-따라서 JEV-CPU는 <strong>로더만</strong>(CPU / <code>float32</code>) 바꾸고 SemIf의 원본 스코어링을 그대로 씁니다.
-표준 라이브러리 웹 서버가 3분할 UI로 이를 노출합니다.</p>
+<p>SemIf가 GPU를 강제하는 곳은 정확히 한 군데다. 로더가 단일 CUDA 디바이스를 확인하고
+<code>device_map={"":"cuda:0"}</code>, <code>bfloat16</code>으로 모델을 올린다. 그 뒤의 코드는 전부 디바이스에
+독립적이다. 스코어링 코드는 <code>device = next(model.parameters()).device</code>를 따르고, 유일한 CUDA 전용
+호출인 <code>torch.cuda.synchronize()</code>는 <code>if device.type == "cuda"</code>로 감싸여 있어 CPU에서는
+아무 일도 하지 않는다. 따라서 JEV-CPU는 로더만 바꾸고(CPU / <code>float32</code>) SemIf의 원본 스코어링을 그대로
+쓴다. 표준 라이브러리 웹 서버가 3분할 UI로 이를 노출한다.</p>
 <figure>
   <img src="assets/jev-cpu-ui.png" alt="JEV-CPU 3분할 웹 UI">
-  <figcaption>그림 2. 웹 UI: state(좌상단), 기준(좌하단), 옵션별 확률 막대와 선택된 옵션(우측).</figcaption>
+  <figcaption>그림 2. 웹 UI. state(좌상단), 기준(좌하단), 옵션별 확률 막대와 선택된 옵션(우측)으로 구성된다.</figcaption>
 </figure>
 
-<h2 id="domains-ko">5. 도메인별 정성 결과</h2>
-<p>CPU에서 <code>Qwen/Qwen3-0.6B</code>를 <code>float32</code>로 사용해, 동일 엔진을 8개 도메인에서 실행했습니다
-(그림 1). 결정당 ≈1초.</p>
-<div class="tablewrap">
-<table>
-  <thead><tr><th>도메인</th><th>기준</th><th>결정</th><th class="n">Forward</th></tr></thead>
-  <tbody>
-    <tr><td>고객 지원</td><td>감성</td><td><span class="ok">negative — 97.4%</span></td><td class="n">~1.1 s</td></tr>
-    <tr><td>고객 지원</td><td>팀 라우팅</td><td><span class="ok">billing — 100%</span></td><td class="n">~1.0 s</td></tr>
-    <tr><td>콘텐츠 모더레이션</td><td>정책 위반?</td><td><span class="ok">violation — 99.3%</span></td><td class="n">~1.1 s</td></tr>
-    <tr><td>콘텐츠 모더레이션</td><td>권장 조치</td><td><span class="ok">warn — 69.2%</span></td><td class="n">~1.0 s</td></tr>
-    <tr><td>코드리뷰 트리아지</td><td>머지 리스크</td><td><span class="ok">high — 99.8%</span></td><td class="n">~1.2 s</td></tr>
-    <tr><td>코드리뷰 트리아지</td><td>PR 처리</td><td><span class="ok">block — 94.9%</span></td><td class="n">~1.1 s</td></tr>
-    <tr><td>인시던트 / DevOps</td><td>심각도</td><td><span class="ok">sev1 — 100%</span></td><td class="n">~1.2 s</td></tr>
-    <tr><td>인시던트 / DevOps</td><td>온콜 호출?</td><td><span class="ok">page_now — 100%</span></td><td class="n">~1.1 s</td></tr>
-    <tr><td>이메일 의도</td><td>주요 의도</td><td><span class="ok">sales — 100%</span></td><td class="n">~1.2 s</td></tr>
-    <tr><td>컴플라이언스 게이트</td><td>변경 티켓 필요?</td><td><span class="ok">required — 100%</span></td><td class="n">~1.1 s</td></tr>
-    <tr><td>대출 / 신용 리스크</td><td>신용 리스크</td><td><span class="ok">high — 100%</span></td><td class="n">~1.2 s</td></tr>
-    <tr><td>대출 / 신용 리스크</td><td>권장 결정</td><td><span class="bad">approve — 82.8% ⚠︎</span></td><td class="n">~1.1 s</td></tr>
-    <tr><td>지원 우선순위</td><td>우선순위</td><td><span class="ok">p1 — 100%</span></td><td class="n">~1.2 s</td></tr>
-  </tbody>
-</table>
-</div>
-<p class="muted">벤치마크가 아니라 예시적 단일 실행입니다. 대출 <em>결정</em> 행은 의도적으로 넣은 소형 모델
-오답 예시입니다(<a href="#limitations-ko">§8</a> 참조).</p>
+<h2 id="impl-ko">5. 실증 · 코드로 보는 구현: 오픈웨이트 모델을 결정 엔진으로</h2>
+<p>이 절이 본 리포트의 실증적 핵심이다. "JEV"/결정 엔진은 파인튜닝도 새 가중치도 아니다. 평범한 오픈웨이트 causal
+LM을 <em>호출하는 방식</em>을 바꿔, 타입드 결정이 단 한 번의 forward에서 떨어지게 하는 것이다. 아래는 JEV-CPU에서
+실제로 도는 전체 파이프라인을 함수 단위로 해부한 것이다. 스코어링 코드는
+<a href="https://github.com/TheoLeeCJ/SemIf">SemIf</a>의 것을 그대로 실었고, JEV-CPU는 로더만 바꾼다
+(<a href="#impl-loader-ko">§5.9</a>). 스니펫 출처는 <code>src/semif_phase1/{core,direct}.py</code>이며 코드 주석은
+원문을 유지한다.</p>
 
-<h2 id="latency-ko">6. 지연과 입력 길이 한계</h2>
-<p>두 수치가 자주 혼동됩니다. 모델 컨텍스트 창은 <strong>40,960 토큰</strong> — 0.6B여도 큽니다. SemIf 엔진은
-결정당 기본 <strong>4,096 토큰</strong> 상한을 둡니다(가드; 조정 가능). CPU에서는 둘 다 실제 제약이 아닙니다.
-8&nbsp;GB CPU 박스에서 입력을 키우며 측정한 단일 결정:</p>
-<div class="tablewrap">
-<table>
-  <thead><tr><th class="n">입력 토큰</th><th class="n">Forward (CPU)</th><th class="n">최대 RAM</th></tr></thead>
-  <tbody>
-    <tr><td class="n">254</td><td class="n">2.5 s</td><td class="n">~3.5 GB</td></tr>
-    <tr><td class="n">731</td><td class="n">5.6 s</td><td class="n">~3.5 GB</td></tr>
-    <tr><td class="n">1,363</td><td class="n">11.9 s</td><td class="n">~3.5 GB</td></tr>
-    <tr><td class="n">2,629</td><td class="n">26.0 s</td><td class="n">~3.5 GB</td></tr>
-    <tr><td class="n">5,165</td><td class="n">66.1 s</td><td class="n">~3.5 GB</td></tr>
-    <tr><td class="n">7,697</td><td class="n">117.4 s</td><td class="n">~3.5 GB</td></tr>
-  </tbody>
-</table>
-</div>
-<p>7,697 토큰에서도 RAM은 ~3.5&nbsp;GB로 평평하고 OOM이 없었습니다 — 여기서 한계는 메모리·모델이 아니라
-<strong>prefill 지연(대략 제곱)</strong>입니다.</p>
-<div class="warnbox">
-  <strong>실용 입력 상한.</strong> 이 CPU에서 사용 가능한 최대치를 <strong>≈7,700 토큰(~117&nbsp;초)</strong>으로
-  둡니다: 이보다 크면 결정 하나가 <strong>~120&nbsp;초</strong>를 넘어 더 이상 유용하지 않으므로, 더 큰 입력은
-  여기서 미지원으로 간주합니다. 대화형 ~1&nbsp;초 결정은 짧은 state(≲~300 토큰)를 필요로 합니다.
-</div>
+<h3 id="impl-overview-ko">5.1 — 한눈에 보는 데이터 흐름</h3>
+<p>하나의 결정은 여덟 단계를 거친다. 어느 단계도 텍스트를 생성하지 않는다.</p>
+<pre><code>record {state, question, options}
+  → validate_row              (5.2  엄격한 스키마 검증)
+  → direct_messages           (5.3  옵션 → 레터, 챗 턴 구성)
+  → encode_prompt             (5.5  챗 템플릿 → 토큰 ids)
+      → _slot_ids             (5.4  각 레터는 깨끗한 1토큰)
+      → boundary check        (5.5  답 경계가 안정적인지)
+  → _forward                  (5.6  단 한 번의 forward, 마지막 위치 로짓)
+  → 슬롯 취합 + softmax        (5.8  옵션별 확률 → arg-max)
+  ⇒ 결정, forward 약 1회</code></pre>
 
-<h2 id="scaling-ko">7. 모델 크기에 따른 정확도 스케일</h2>
-<p><code>Qwen3-0.6B</code>는 SemIf 사다리에서 가장 작은 모델로, 정확도의 바닥입니다. SemIf 평가에서:</p>
-<div class="tablewrap">
-<table>
-  <thead><tr><th>브레인 모델</th><th class="n">크기</th><th class="n">저작 balanced acc.</th><th class="n">TypeSafe subset 일치</th></tr></thead>
-  <tbody>
-    <tr><td>Qwen3-0.6B <span class="muted">(JEV-CPU 기본)</span></td><td class="n">0.6 B</td><td class="n">0.440</td><td class="n">0.407</td></tr>
-    <tr><td>MiniCPM5-2B</td><td class="n">2 B</td><td class="n">0.686</td><td class="n">0.637</td></tr>
-    <tr><td>Qwen3.5-4B</td><td class="n">4 B</td><td class="n"><strong>0.813</strong></td><td class="n"><strong>0.845</strong></td></tr>
-  </tbody>
-</table>
-</div>
-<p>엔진은 모델 독립적이라 상위 모델로의 이동은 한 줄 변경(<code>MODEL = …</code>)이며, 대가는 이 박스를 넘는
-RAM·연산입니다. <strong>방법은 어디서든 돌아가고, 정확도는 어떤 모델을 가리키느냐에 따라 스케일됩니다.</strong></p>
-
-<h3 id="outlook-ko">7.1 전망 — GPU 서빙과 상용 JEV</h3>
-<p>정확도(§7)와 CPU 지연(§6)은 보통 상충 관계로 여겨지지만, GPU는 <em>둘 다 동시에</em> 완화합니다:</p>
-<ul>
-  <li><strong>지연 붕괴.</strong> prefill은 GPU가 가장 잘하는 작업입니다. SemIf는 단일 RTX&nbsp;3090에서 4B
-  모델이 <strong>21개 이진 결정을 중앙값 1.02&nbsp;초</strong>에 반환한다고 보고합니다(동일 JSON 생성은 5.3&nbsp;초)
-  — 같은 판독인데 지연에 묶이지 않을 뿐입니다.</li>
-  <li><strong>입력 크기 증가.</strong> 벽이 사라지면 실용 입력이 ~7,700 토큰/~120&nbsp;초에서 모델의 전체
-  <strong>40,960 토큰</strong> 컨텍스트로 올라갑니다 — 긴 문서·트랜스크립트·코드 diff를 한 번에.</li>
-  <li><strong>처리량 배가.</strong> 결정이 1회 forward라 <em>배칭</em>이 쉽고, shared-state 프리픽스 재사용이 긴
-  state를 여러 기준에 걸쳐 분할상환합니다. SemIf는 단일 3090에서 <strong>~20 decisions/s</strong>를 측정합니다.</li>
-</ul>
-<p>종합하면, GPU에서 서빙되는 더 큰 오픈웨이트 모델(4B+)은 <strong>동시에 더 정확하고, 훨씬 큰 입력을 받으며,
-초당 많은 결정을 처리</strong>합니다 — 타입드·감사 가능 출력에 파싱도 필요 없이. 이것이 <strong>상용(잠재적
-상업) JEV</strong>의 형태입니다: 저지연·고처리량의 호스팅형 semantic-if 서비스. <strong>JEV-CPU는 바닥</strong>
-(어느 머신에도 이식 가능)이고, <strong>GPU로 서빙되는 더 큰 모델은 천장</strong>으로 같은 엔진을 제품으로 만듭니다.</p>
-<div class="note">
-  <strong>범위.</strong> 본 리포트에서 GPU 실험을 수행하지는 않았습니다. 위 GPU 지연·처리량 수치는 SemIf의
-  공개 단일-GPU(RTX 3090, 4B) 측정과 우리 CPU 곡선(§6)으로부터의 추정이며, 우리 자신의 결과가 아니라 시사점입니다.
-  GPU 서빙 JEV의 정량화(tokens/s, decisions/s, 비용, 동시성)가 자연스러운 다음 연구입니다.
-</div>
-
-<h2 id="limitations-ko">8. 한계</h2>
-<ul>
-  <li><strong>새 방법 아님.</strong> 로짓 판독 메커니즘은 선행 기술이며, 본 작업은 포트와 측정입니다.</li>
-  <li><strong>소형 모델 오류.</strong> 0.6B에서는 2차 결정이 비일관적일 수 있습니다(대출 사례는 <em>high risk</em>를
-  맞히면서도 <em>approve</em>로 기움); 더 큰 모델이 이를 해소합니다(§7).</li>
-  <li><strong>벤치마크 아님.</strong> §5는 단일 실행 예시이며, 정량 정확도는 SemIf 저장소(§7에서 인용)에 있습니다.</li>
-  <li><strong>단일 머신 측정.</strong> 지연은 하나의 8&nbsp;GB CPU 박스 값이며 하드웨어에 따라 달라집니다.</li>
-  <li><strong>확률은 조건부</strong>이며(선언된 옵션에 대해) 신뢰도로서는 미보정입니다.</li>
-</ul>
-
-<h2 id="conclusion-ko">9. 결론</h2>
-<p>결정-네이티브 로짓 판독 추론은 GPU나 큰 모델에 묶이지 않습니다. 로더 변경만으로 SemIf 엔진은 0.6B 모델로
-일반 CPU에서 돌아가고, 여러 도메인을 결정당 ~1초에 처리하며, 기본 토큰 상한을 훨씬 넘어서도 메모리가 안정적입니다.
-이 하드웨어에서 정직한 한계는 지연입니다: ~7,700 토큰을 넘는 입력은 ~120초 선을 넘고, 개선되는 것은 컨텍스트나
-메모리가 아니라 소형 모델의 정확도입니다. JEV-CPU는 재현 가능한 바닥이고, 같은 엔진에 GPU 위의 더 큰 오픈웨이트
-모델을 주면 천장(§7.1) — 정확하고 고처리량·저지연인 semantic-if 서비스, 즉 상용 JEV — 을 가리킵니다.</p>
-
-<h2 id="repro-ko">10. 재현</h2>
-<ul>
-  <li>GitHub — <a href="https://github.com/leesk212/JEV-CPU">github.com/leesk212/JEV-CPU</a></li>
-  <li>Hugging Face — <a href="https://huggingface.co/Meanblock/JEV-CPU">huggingface.co/Meanblock/JEV-CPU</a></li>
-</ul>
-<pre><code>python3 -m venv .venv &amp;&amp; source .venv/bin/activate
-pip install --index-url https://download.pytorch.org/whl/cpu torch
-pip install transformers accelerate
-python semif_cpu.py      # CLI: 옵션별 확률
-python server.py         # 웹 UI: http://localhost:8080</code></pre>
-
-<hr>
-
-<h2 id="appendix-ko">부록 A. 코드 레벨 상세: 오픈웨이트 모델을 결정 엔진으로 만들기</h2>
-<p>"JEV"/결정 엔진은 <strong>파인튜닝도 새 가중치도 아닙니다</strong> — 평범한 오픈웨이트 causal LM을
-<em>호출하는 방식</em>으로, 타입드 결정이 단 한 번의 forward에서 나오게 하는 것입니다. 스코어링 코드는
-<a href="https://github.com/TheoLeeCJ/SemIf">SemIf</a>의 것을 그대로 실었으며, JEV-CPU는 로더만 바꿉니다
-(<a href="#a7-ko">A.7</a>). 스니펫 출처: <code>src/semif_phase1/{core,direct}.py</code>. (코드 주석은 원문 유지)</p>
-
-<h3 id="a1-ko">A.1 — 레코드와 검증</h3>
+<h3 id="impl-validate-ko">5.2 — 레코드와 검증</h3>
+<p>입력은 하나의 평범한 레코드다. 검증은 엄격해서, 이후 단계에서 조용히 강제 변환되거나 잘리는 일이 없다.</p>
 <pre><code>def validate_row(row):
     required = {"id", "state", "question", "options"}
     if not required &lt;= row.keys(): raise ValueError(...)
     json.dumps(state, ensure_ascii=False, allow_nan=False)   # finite JSON
     if not isinstance(options, list) or not 2 &lt;= len(options) &lt;= len(LETTERS): raise ValueError(...)</code></pre>
-<p class="muted">state는 비어있지 않은 유한 JSON(문자열/객체/배열), 옵션은 2–16개, 각 <code>{id, description}</code>,
-id는 고유해야 합니다.</p>
+<p class="muted"><code>state</code>는 비어 있지 않은 문자열/JSON 객체/배열이고, 옵션은 2–16개이며 각각
+<code>{id, description}</code>, id는 서로 달라야 한다.</p>
 
-<h3 id="a2-ko">A.2 — 레터-초이스 프롬프트 구성</h3>
+<h3 id="impl-prompt-ko">5.3 — 레터-초이스 프롬프트 구성</h3>
+<p>각 옵션에 대문자 레터를 부여하고, 레코드를 두 턴짜리 챗으로 만든다. 시스템 턴이 레터 한 글자 외에는 아무것도
+못 내게 하므로, <em>다음</em> 토큰 하나가 결정 전체를 담는다.</p>
 <pre><code>LETTERS = "ABCDEFGHIJKLMNOP"
 DIRECT_SYSTEM = ("Apply the supplied criterion to the supplied evidence. "
                  "Choose exactly one listed option. Respond with only its "
@@ -675,9 +632,10 @@ def direct_messages(row):
                            for i, o in enumerate(row["options"])]}
     return [{"role":"system","content":DIRECT_SYSTEM},
             {"role":"user","content":json.dumps(payload, ensure_ascii=False)}]</code></pre>
-<p class="muted">시스템 턴이 "대문자 한 글자만" 답하게 하여, 생성될 다음 토큰 자체가 결정이 됩니다.</p>
 
-<h3 id="a3-ko">A.3 — 각 옵션을 정확히 1토큰으로 고정</h3>
+<h3 id="impl-slots-ko">5.4 — 각 옵션을 정확히 1토큰으로 고정</h3>
+<p>판독은 각 답 레터의 확률을 비교하므로, 레터마다 깨끗한 어휘 슬롯 하나가 필요하다. 정확히 1토큰으로 round-trip
+되고 서로 충돌하지 않아야 한다.</p>
 <pre><code>def _slot_ids(tokenizer, count):
     result = []
     for letter in LETTERS[:count]:
@@ -687,9 +645,10 @@ def direct_messages(row):
         result.append(encoded[0])
     if len(result) != len(set(result)): raise ValueError("Answer-slot tokens collide")
     return result</code></pre>
-<p class="muted">각 레터가 정확히 1토큰으로 round-trip되고 서로 충돌하지 않아야, 로짓 비교가 깨끗해집니다.</p>
 
-<h3 id="a4-ko">A.4 — 인코딩과 답 경계 검증</h3>
+<h3 id="impl-encode-ko">5.5 — 인코딩과 답 경계 검증</h3>
+<p>챗 템플릿을 생성 프롬프트를 켜고 thinking을 끈 채 적용한 뒤, 두 불변식을 확인한다. 프롬프트가 토큰 예산에 들고
+(자르지 않는다), 답 레터를 붙였을 때 토큰화가 정확히 그 슬롯 하나만 늘어난다(프롬프트/답 경계가 안정적이다).</p>
 <pre><code>def encode_prompt(tokenizer, row, max_tokens):
     prompt = tokenizer.apply_chat_template(direct_messages(row), tokenize=False,
         add_generation_prompt=True, enable_thinking=False)
@@ -699,36 +658,41 @@ def direct_messages(row):
     for letter, token in zip(LETTERS, slots):
         if tokenizer.encode(prompt + letter, add_special_tokens=False) != ids + [token]:
             raise ValueError(f"Answer boundary changes tokenization for slot {letter}")
-    return ids, slots, digest(prompt)</code></pre>
-<p class="muted">토큰 예산 초과 시 자르지 않고 에러를 냅니다. 또 답 레터를 붙였을 때 토큰화가 정확히 그 1슬롯만
-늘어나는지 확인해 프롬프트/답 경계를 고정합니다.</p>
+    return ids, slots, digest(prompt)   # sha256, 감사용</code></pre>
 
-<h3 id="a5-ko">A.5 — 1회 forward, 마지막 위치 로짓</h3>
+<h3 id="impl-forward-ko">5.6 — 1회 forward, 마지막 위치 로짓</h3>
+<p>모델을 <strong>한 번만</strong> 돌려 마지막 위치, 즉 다음-토큰 분포만 취한다. <code>logits_to_keep=1</code>은
+전체 시퀀스 로짓 텐서 생성을 피한다. 샘플링도 루프도 없다.</p>
 <pre><code>def _forward(model, inputs):
     params = inspect.signature(model.forward).parameters
     kwargs = dict(inputs, use_cache=False, return_dict=True)
     if "logits_to_keep" in params: kwargs["logits_to_keep"] = 1
     return model(**kwargs).logits[:, -1, :]     # (batch, vocab); 샘플링 없음</code></pre>
-<p class="muted">모델을 한 번만 돌려 마지막 위치의 다음-토큰 분포만 취합니다. <code>logits_to_keep=1</code>로 전체
-시퀀스 로짓 텐서 생성을 피합니다.</p>
 
-<h3 id="a6-ko">A.6 — 슬롯 취합, softmax, 결정</h3>
+<h3 id="impl-device-ko">5.7 — 디바이스 처리: CPU에서도 그대로 도는 이유</h3>
+<p>스코어링 함수는 모델이 올라간 디바이스를 읽고, CUDA일 때만 동기화한다. 이 두 줄이 같은 코드가 GPU에서도 CPU에서도
+수정 없이 도는 이유의 전부다.</p>
+<pre><code>device = next(model.parameters()).device          # 모델을 따라감
+if device.type == "cuda": torch.cuda.synchronize(device)   # CPU에선 no-op</code></pre>
+
+<h3 id="impl-score-ko">5.8 — 슬롯 취합, softmax, 결정</h3>
+<p>전체 어휘 로짓 벡터에서 옵션 레터 토큰만 골라 softmax를 취하면, 선언된 집합에 조건부인 옵션별 확률이 나온다.
+선택은 그 arg-max다.</p>
 <pre><code>def score(model, tokenizer, row, metadata, max_tokens=4096):
-    import torch
     ids, slots, prompt_hash = encode_prompt(tokenizer, row, max_tokens)
-    device = next(model.parameters()).device          # 모델을 따라감
+    device = next(model.parameters()).device
     inputs = {"input_ids": torch.tensor([ids], device=device),
               "attention_mask": torch.ones((1, len(ids)), device=device)}
-    if device.type == "cuda": torch.cuda.synchronize(device)   # CPU에선 no-op
+    if device.type == "cuda": torch.cuda.synchronize(device)
     with torch.inference_mode():
         vocabulary = _forward(model, inputs)[0].float()        # (vocab,)
     selected = vocabulary[slots].cpu().tolist()   # A, B, C, ... 위치의 로짓
     return {"option_ids":[o["id"] for o in row["options"]],
             "option_logits": selected, "probabilities": softmax(selected), ...}</code></pre>
-<p>이것이 "JEV화"의 전부입니다: 표준 <code>AutoModelForCausalLM</code>에게 생성을 시키지 않고, 다음-토큰 로짓을
-한 번 물어본 뒤, 옵션 슬롯들의 arg-max가 곧 결정입니다.</p>
+<p>이것이 "JEV화"의 전부다. 표준 <code>AutoModelForCausalLM</code>에 생성을 시키지 않고, 다음-토큰 로짓을 한 번
+물어본 뒤, 옵션 슬롯들의 arg-max를 결정으로 삼는다.</p>
 
-<h3 id="a7-ko">A.7 — CPU 실행을 위한 유일한 변경</h3>
+<h3 id="impl-loader-ko">5.9 — CPU 실행을 위한 유일한 변경</h3>
 <div class="tablewrap">
 <table>
   <thead><tr><th>SemIf — <code>load_causal_model</code> (GPU)</th><th>JEV-CPU — <code>load_causal_model_cpu</code></th></tr></thead>
@@ -751,22 +715,141 @@ model.eval()</code></pre></td>
   </tr></tbody>
 </table>
 </div>
-<p><code>score()</code>가 디바이스를 모델에서 유도하므로 CPU 로드만으로 충분합니다 — 동일 스코어링 코드가 CUDA
-sync만 건너뛴 채 실행됩니다. 다른 한 가지 노브는 브레인 교체입니다: 답 레터가 단일 토큰인 임의의 causal LM으로
-<code>MODEL</code>을 바꾸면 됩니다.</p>
+<p>§5.7–§5.8이 디바이스를 모델에서 가져오므로 CPU에 올리기만 하면 된다. 동일한 스코어링 코드가 CUDA sync만 건너뛴
+채 실행된다. 다른 한 가지 노브는 브레인 교체다. 답 레터가 단일 토큰인 causal LM이면 무엇이든 <code>MODEL</code>로
+지정할 수 있다.</p>
 
-<h3 id="a8-ko">A.8 — 하나의 state를 여러 기준에 재사용 (shared 모드)</h3>
-<p><code>shared.py</code>는 state를 KV 캐시에 한 번 prefill하고 <code>cache.reorder_cache(...)</code>로 브랜치에
-복제한 뒤, 벡터 <code>logits_to_keep</code>로 모든 기준의 답 위치를 한 번의 배치 forward로 평가합니다 — 프리필
-1회, 결정 다수. 이 경로도 CUDA에서만 sync합니다.</p>
+<h3 id="impl-shared-ko">5.10 — 하나의 state를 여러 기준에 재사용 (shared 모드)</h3>
+<p>여러 기준이 같은 <code>state</code>를 판단할 때, <code>shared.py</code>는 state를 KV 캐시에 한 번 prefill하고
+<code>cache.reorder_cache(...)</code>로 브랜치에 복제한 뒤, 벡터 <code>logits_to_keep</code>로 모든 기준의 답 위치를
+한 번의 배치 forward로 평가한다. 프리필은 한 번, 결정은 여럿이다. 이 경로 역시 CUDA에서만 sync하며, 고처리량 서빙을
+싸게 만드는 핵심이다(<a href="#outlook-ko">§8.1</a>).</p>
+
+<h2 id="domains-ko">6. 도메인별 실증 결과</h2>
+<p>CPU에서 <code>Qwen/Qwen3-0.6B</code>를 <code>float32</code>로 사용해 동일한 엔진을 8개 도메인에서 실행했다
+(그림 1). 결정당 약 1초가 걸렸다.</p>
+<div class="tablewrap">
+<table>
+  <thead><tr><th>도메인</th><th>기준</th><th>결정</th><th class="n">Forward</th></tr></thead>
+  <tbody>
+    <tr><td>고객 지원</td><td>감성</td><td><span class="ok">negative — 97.4%</span></td><td class="n">~1.1 s</td></tr>
+    <tr><td>고객 지원</td><td>팀 라우팅</td><td><span class="ok">billing — 100%</span></td><td class="n">~1.0 s</td></tr>
+    <tr><td>콘텐츠 모더레이션</td><td>정책 위반?</td><td><span class="ok">violation — 99.3%</span></td><td class="n">~1.1 s</td></tr>
+    <tr><td>콘텐츠 모더레이션</td><td>권장 조치</td><td><span class="ok">warn — 69.2%</span></td><td class="n">~1.0 s</td></tr>
+    <tr><td>코드리뷰 트리아지</td><td>머지 리스크</td><td><span class="ok">high — 99.8%</span></td><td class="n">~1.2 s</td></tr>
+    <tr><td>코드리뷰 트리아지</td><td>PR 처리</td><td><span class="ok">block — 94.9%</span></td><td class="n">~1.1 s</td></tr>
+    <tr><td>인시던트 / DevOps</td><td>심각도</td><td><span class="ok">sev1 — 100%</span></td><td class="n">~1.2 s</td></tr>
+    <tr><td>인시던트 / DevOps</td><td>온콜 호출?</td><td><span class="ok">page_now — 100%</span></td><td class="n">~1.1 s</td></tr>
+    <tr><td>이메일 의도</td><td>주요 의도</td><td><span class="ok">sales — 100%</span></td><td class="n">~1.2 s</td></tr>
+    <tr><td>컴플라이언스 게이트</td><td>변경 티켓 필요?</td><td><span class="ok">required — 100%</span></td><td class="n">~1.1 s</td></tr>
+    <tr><td>대출 / 신용 리스크</td><td>신용 리스크</td><td><span class="ok">high — 100%</span></td><td class="n">~1.2 s</td></tr>
+    <tr><td>대출 / 신용 리스크</td><td>권장 결정</td><td><span class="bad">approve — 82.8% ⚠︎</span></td><td class="n">~1.1 s</td></tr>
+    <tr><td>지원 우선순위</td><td>우선순위</td><td><span class="ok">p1 — 100%</span></td><td class="n">~1.2 s</td></tr>
+  </tbody>
+</table>
+</div>
+<p class="muted">벤치마크가 아니라 예시적 단일 실행이다. 대출 <em>결정</em> 행은 소형 모델의 오답을 의도적으로
+드러낸 예시다(<a href="#limitations-ko">§9</a> 참조).</p>
+
+<h2 id="latency-ko">7. 지연과 입력 길이 한계</h2>
+<p>두 수치가 자주 혼동된다. 모델의 컨텍스트 창은 <strong>40,960 토큰</strong>으로, 0.6B치고도 크다. SemIf
+엔진은 결정당 기본 <strong>4,096 토큰</strong> 상한을 둔다(안전장치이며 조정 가능하다). CPU에서는 둘 다 실제
+제약이 아니다. 8&nbsp;GB CPU 머신에서 입력을 키워 가며 측정한 단일 결정은 다음과 같다.</p>
+<div class="tablewrap">
+<table>
+  <thead><tr><th class="n">입력 토큰</th><th class="n">Forward (CPU)</th><th class="n">최대 RAM</th></tr></thead>
+  <tbody>
+    <tr><td class="n">254</td><td class="n">2.5 s</td><td class="n">~3.5 GB</td></tr>
+    <tr><td class="n">731</td><td class="n">5.6 s</td><td class="n">~3.5 GB</td></tr>
+    <tr><td class="n">1,363</td><td class="n">11.9 s</td><td class="n">~3.5 GB</td></tr>
+    <tr><td class="n">2,629</td><td class="n">26.0 s</td><td class="n">~3.5 GB</td></tr>
+    <tr><td class="n">5,165</td><td class="n">66.1 s</td><td class="n">~3.5 GB</td></tr>
+    <tr><td class="n">7,697</td><td class="n">117.4 s</td><td class="n">~3.5 GB</td></tr>
+  </tbody>
+</table>
+</div>
+<p>7,697 토큰에서도 RAM은 약 3.5&nbsp;GB로 평평했고 OOM은 없었다. 즉 여기서의 한계는 메모리나 모델이 아니라
+<strong>prefill 지연(대략 제곱으로 증가)</strong>이다.</p>
+<div class="warnbox">
+  <strong>실용 입력 상한.</strong> 이 CPU에서 쓸 수 있는 최대치를 <strong>약 7,700 토큰(약 117&nbsp;초)</strong>으로
+  본다. 이보다 크면 결정 하나가 <strong>약 120&nbsp;초</strong>를 넘겨 더 이상 실용적이지 않으므로, 더 큰 입력은
+  여기서 미지원으로 간주한다. 대화형으로 약 1&nbsp;초 안에 답하려면 state를 짧게(대략 300 토큰 이하) 유지해야 한다.
+</div>
+
+<h2 id="scaling-ko">8. 모델 크기에 따른 정확도 스케일</h2>
+<p><code>Qwen3-0.6B</code>는 SemIf 사다리에서 가장 작은 모델로, 정확도의 바닥에 해당한다. SemIf의 평가 결과는
+다음과 같다.</p>
+<div class="tablewrap">
+<table>
+  <thead><tr><th>브레인 모델</th><th class="n">크기</th><th class="n">저작 balanced acc.</th><th class="n">TypeSafe subset 일치</th></tr></thead>
+  <tbody>
+    <tr><td>Qwen3-0.6B <span class="muted">(JEV-CPU 기본)</span></td><td class="n">0.6 B</td><td class="n">0.440</td><td class="n">0.407</td></tr>
+    <tr><td>MiniCPM5-2B</td><td class="n">2 B</td><td class="n">0.686</td><td class="n">0.637</td></tr>
+    <tr><td>Qwen3.5-4B</td><td class="n">4 B</td><td class="n"><strong>0.813</strong></td><td class="n"><strong>0.845</strong></td></tr>
+  </tbody>
+</table>
+</div>
+<p>엔진은 모델에 독립적이므로 상위 모델로 올리는 것은 한 줄 변경(<code>MODEL = …</code>)이면 된다. 대가는 이
+머신의 한계를 넘는 RAM과 연산이다. 방법은 어디서든 돌아가고, 정확도는 어떤 모델을 가리키느냐에 따라 달라진다.</p>
+
+<h3 id="outlook-ko">8.1 전망 — GPU 서빙과 상용 JEV</h3>
+<p>정확도(§8)와 CPU 지연(§7)은 흔히 서로 맞바꿔야 하는 관계로 여겨지지만, GPU는 이 둘을 동시에 푼다.</p>
+<ul>
+  <li><strong>지연이 무너진다.</strong> prefill은 GPU가 가장 잘하는 연산이다. SemIf는 단일 RTX&nbsp;3090에서 4B
+  모델이 <strong>21개의 이진 결정을 중앙값 1.02&nbsp;초</strong>에 반환한다고 보고한다(같은 결과를 JSON으로 생성하면
+  5.3&nbsp;초다). 같은 판독이지만 지연에 묶이지 않을 뿐이다.</li>
+  <li><strong>입력이 커진다.</strong> 지연 벽이 사라지면 실용 입력은 약 7,700 토큰/약 120&nbsp;초에서 모델의 전체
+  <strong>40,960 토큰</strong> 컨텍스트까지 올라간다. 긴 문서, 대화록, 코드 diff를 한 번에 판단할 수 있다.</li>
+  <li><strong>처리량이 늘어난다.</strong> 결정이 1회 forward이므로 배칭이 쉽고, shared-state 경로(§5.10)가 긴
+  state를 여러 기준에 나눠 상각한다. SemIf는 단일 3090에서 초당 약 <strong>20건</strong>의 결정을 측정한다.</li>
+</ul>
+<p>종합하면, GPU에서 서빙되는 더 큰 오픈웨이트 모델(4B 이상)은 동시에 더 정확하고, 훨씬 큰 입력을 받으며, 초당
+많은 결정을 처리한다. 그것도 타입드하고 감사 가능한 출력으로, 파싱할 것도 없이 말이다. 이것이 <strong>상용(잠재적
+으로 상업적) JEV</strong>의 모습이다. 저지연·고처리량의 호스팅형 semantic-if 서비스다. <strong>JEV-CPU가 바닥</strong>
+이라면(어느 머신에도 이식할 수 있다), <strong>GPU로 서빙되는 더 큰 모델은 같은 엔진을 제품으로 끌어올리는 천장</strong>
+이다.</p>
+<div class="note">
+  <strong>범위.</strong> 본 리포트에서 GPU 실험을 직접 수행하지는 않았다. 위의 GPU 지연·처리량 수치는 SemIf가
+  공개한 단일 GPU(RTX 3090, 4B) 측정값과 우리의 CPU 곡선(§7)에서 끌어낸 추정을 합친 것으로, 우리 자신의 결과가
+  아니라 시사점이다. GPU 서빙 JEV의 정량화(tokens/s, decisions/s, 비용, 동시성)가 자연스러운 다음 연구다.
+</div>
+
+<h2 id="limitations-ko">9. 한계</h2>
+<ul>
+  <li><strong>새로운 방법이 아니다.</strong> 로짓 판독 메커니즘은 선행 기술이며, 본 작업은 포팅과 측정이다.</li>
+  <li><strong>소형 모델의 오류.</strong> 0.6B에서는 2차 결정이 일관되지 않을 수 있다(대출 사례는 <em>high risk</em>를
+  맞히면서도 <em>approve</em>로 기운다). 더 큰 모델은 이를 해소한다(§8).</li>
+  <li><strong>벤치마크가 아니다.</strong> §6은 단일 실행 예시이며, 정량 정확도는 SemIf 저장소에 있다(§8에서 인용).</li>
+  <li><strong>단일 머신 측정.</strong> 지연은 하나의 8&nbsp;GB CPU 머신에서 나온 값이며 하드웨어에 따라 달라진다.</li>
+  <li><strong>확률은 조건부다.</strong> 선언된 옵션에 대한 값이며, 신뢰도로서는 보정되지 않았다.</li>
+</ul>
+
+<h2 id="conclusion-ko">10. 결론</h2>
+<p>결정-네이티브 로짓 판독 추론은 GPU나 큰 모델에 묶이지 않는다. §5가 코드로 보였듯, 평범한 오픈웨이트 모델은
+로더 변경만으로 결정 엔진이 된다. 그렇게 하면 SemIf 엔진은 0.6B 모델로 일반 CPU에서 돌아가고, 여러 도메인을 결정당
+약 1초에 처리하며, 기본 토큰 상한을 훌쩍 넘겨도 메모리가 안정적이다. 이 하드웨어에서 정직한 한계는 지연이다. 약
+7,700 토큰을 넘는 입력은 약 120초 선을 넘고, 나아지는 것은 컨텍스트나 메모리가 아니라 소형 모델의 정확도다. JEV-CPU는
+재현 가능한 바닥이다. 같은 엔진에 GPU 위의 더 큰 오픈웨이트 모델을 얹으면 천장(§8.1)에 닿는다. 정확하고 처리량이 높고
+지연이 낮은 semantic-if 서비스, 곧 상용 JEV다.</p>
+
+<h2 id="repro-ko">11. 재현</h2>
+<ul>
+  <li>GitHub — <a href="https://github.com/leesk212/JEV-CPU">github.com/leesk212/JEV-CPU</a></li>
+  <li>Hugging Face — <a href="https://huggingface.co/Meanblock/JEV-CPU">huggingface.co/Meanblock/JEV-CPU</a></li>
+</ul>
+<pre><code>python3 -m venv .venv &amp;&amp; source .venv/bin/activate
+pip install --index-url https://download.pytorch.org/whl/cpu torch
+pip install transformers accelerate
+python semif_cpu.py      # CLI: 옵션별 확률
+python server.py         # 웹 UI: http://localhost:8080</code></pre>
 
 <h2 id="refs-ko">참고문헌</h2>
 <ol class="refs">
   <li>T. Lee (TheoLeeCJ). <em>SemIf — Semantic ifs from open models.</em> <a href="https://github.com/TheoLeeCJ/SemIf">github.com/TheoLeeCJ/SemIf</a>. 데모: <a href="https://openjev.com/">openjev.com</a>.</li>
-  <li>TypeSafe. <em>Jev</em> (비공개 서비스). 이름·상표는 각 소유자의 것이며, 본 작업은 독립적이고 무관합니다.</li>
+  <li>TypeSafe. <em>Jev</em> (비공개 서비스). 이름·상표는 각 소유자의 것이며, 본 작업은 독립적이고 무관하다.</li>
   <li>Qwen Team. <em>Qwen3-0.6B.</em> <a href="https://huggingface.co/Qwen/Qwen3-0.6B">huggingface.co/Qwen/Qwen3-0.6B</a>.</li>
-  <li>A. Liu 외. <em>WANLI.</em> <a href="https://huggingface.co/datasets/alisawuffles/WANLI">데이터셋</a> (SemIf §7 평가에 사용).</li>
-  <li>MIT 라이선스로 배포.</li>
+  <li>A. Liu 외. <em>WANLI.</em> <a href="https://huggingface.co/datasets/alisawuffles/WANLI">데이터셋</a> (SemIf §8 평가에 사용).</li>
+  <li>MIT 라이선스로 배포한다.</li>
 </ol>
 
 </div><!-- /report-ko -->
@@ -774,7 +857,7 @@ sync만 건너뛴 채 실행됩니다. 다른 한 가지 노브는 브레인 교
 <footer>
   JEV-CPU Technical Report · v1 · 2026-09-19 · leesk212 (Meanblock).
   <span class="en">An independent CPU port and empirical study of <a href="https://github.com/TheoLeeCJ/SemIf">SemIf</a>. Not affiliated with or endorsed by SemIf's author, TypeSafe, or Jev.</span>
-  <span class="ko"><a href="https://github.com/TheoLeeCJ/SemIf">SemIf</a>의 독립적 CPU 포트 및 실증 연구. SemIf 저자·TypeSafe·Jev와 무관하며 보증받지 않았습니다.</span>
+  <span class="ko"><a href="https://github.com/TheoLeeCJ/SemIf">SemIf</a>의 독립적 CPU 포트이자 실증 연구다. SemIf 저자·TypeSafe·Jev와 무관하며 보증받지 않았다.</span>
 </footer>
 
 </div>
@@ -787,17 +870,19 @@ function setLang(l){
   en.classList.toggle('active', l==='en'); ko.classList.toggle('active', l==='ko');
   try{localStorage.setItem('jevcpu-lang', l);}catch(e){}
 }
+function toggleNav(){ document.documentElement.classList.toggle('nav-open'); }
+function closeNav(){ document.documentElement.classList.remove('nav-open'); }
 (function(){
   var saved=null; try{saved=localStorage.getItem('jevcpu-lang');}catch(e){}
   setLang(saved==='ko' ? 'ko' : 'en');   // default English
 })();
 
-// scroll-spy: highlight the current section in the sticky side nav
+// scroll-spy: highlight the current section in the side nav
 (function(){
   var links = {};
   document.querySelectorAll('.sidenav a').forEach(function(a){ links[a.getAttribute('href')] = a; });
   var targets = document.querySelectorAll(
-    '#report-en > h2[id], #report-ko > h2[id], #outlook, #outlook-ko, #appendix, #appendix-ko');
+    '#report-en > h2[id], #report-ko > h2[id], #outlook, #outlook-ko');
   if(!('IntersectionObserver' in window) || !targets.length) return;
   var obs = new IntersectionObserver(function(entries){
     entries.forEach(function(e){
