@@ -102,6 +102,7 @@
   <a href="#limitations">8. Limitations</a>
   <a href="#conclusion">9. Conclusion</a>
   <a href="#repro">10. Reproducibility</a>
+  <a href="#appendix">Appendix A. Code-level walkthrough</a>
   <a href="#refs">References</a>
 </nav>
 
@@ -269,6 +270,157 @@ pip install --index-url https://download.pytorch.org/whl/cpu torch
 pip install transformers accelerate
 python semif_cpu.py      # CLI: typed option probabilities
 python server.py         # web UI on http://localhost:8080</code></pre>
+
+<hr>
+
+<h2 id="appendix">Appendix A. Code-level walkthrough: turning an open-weight model into a decision engine</h2>
+<p>A "JEV" / decision engine is <strong>not a fine-tune and not new weights</strong> — it is a way of
+<em>calling</em> an ordinary open-weight causal language model so that a typed decision falls out of a single
+forward pass. This appendix walks the full pipeline function by function, as it runs in JEV-CPU. The scoring
+code is <a href="https://github.com/TheoLeeCJ/SemIf">SemIf</a>'s, reproduced here verbatim for the report;
+JEV-CPU changes only the model <em>loader</em> (<a href="#a7">A.7</a>). All snippets are from
+<code>src/semif_phase1/{core,direct}.py</code>.</p>
+
+<h3 id="a1">A.1 — The record and its validation</h3>
+<p>A decision is one plain record: a <code>state</code> (evidence, string / JSON object / array), a
+<code>question</code> (criterion), and 2–16 <code>options</code>, each with a stable <code>id</code> and a
+human <code>description</code>. Validation is strict so nothing is silently coerced:</p>
+<pre><code>def validate_row(row):
+    required = {"id", "state", "question", "options"}
+    if not required &lt;= row.keys(): raise ValueError(...)
+    # state must be a nonempty, finite, JSON-serializable string/object/array
+    json.dumps(state, ensure_ascii=False, allow_nan=False)
+    # 2..16 options, each {id: str, description: str}, ids unique
+    if not isinstance(options, list) or not 2 &lt;= len(options) &lt;= len(LETTERS): raise ValueError(...)</code></pre>
+
+<h3 id="a2">A.2 — Building a letter-choice prompt</h3>
+<p>Each option is assigned an uppercase letter and the record is serialized into a two-turn chat. The system
+turn constrains the model to answer with a single letter and nothing else — this is what makes the <em>next</em>
+token the entire decision:</p>
+<pre><code>LETTERS = "ABCDEFGHIJKLMNOP"
+DIRECT_SYSTEM = ("Apply the supplied criterion to the supplied evidence. "
+                 "Choose exactly one listed option. Respond with only its "
+                 "uppercase letter, with no explanation or reasoning.")
+
+def direct_messages(row):
+    payload = {
+        "evidence":  row["state"],
+        "criterion": row["question"],
+        "options":   [{"letter": LETTERS[i], "description": o["description"]}
+                      for i, o in enumerate(row["options"])],
+    }
+    return [{"role": "system", "content": DIRECT_SYSTEM},
+            {"role": "user",   "content": json.dumps(payload, ensure_ascii=False)}]</code></pre>
+
+<h3 id="a3">A.3 — Pinning each option to exactly one token</h3>
+<p>The readout compares the model's probability of each answer letter, so every letter must map to a
+<strong>single, clean vocabulary slot</strong>. Each letter is checked to encode to exactly one token that
+round-trips, with no collisions between options:</p>
+<pre><code>def _slot_ids(tokenizer, count):
+    result = []
+    for letter in LETTERS[:count]:
+        encoded = tokenizer.encode(letter, add_special_tokens=False)
+        if len(encoded) != 1 or tokenizer.decode(encoded) != letter:
+            raise ValueError(f"Answer slot {letter!r} is not one exact round-trip token")
+        result.append(encoded[0])
+    if len(result) != len(set(result)):
+        raise ValueError("Answer-slot tokens collide")
+    return result            # e.g. token ids for "A", "B", "C"</code></pre>
+
+<h3 id="a4">A.4 — Encoding and verifying the answer boundary</h3>
+<p>The chat template is applied with the generation prompt on and thinking disabled, then two invariants are
+asserted: the prompt fits the token budget (no silent truncation), and appending any answer letter extends the
+tokenization by exactly that one slot token — i.e. the boundary between prompt and answer is stable:</p>
+<pre><code>def encode_prompt(tokenizer, row, max_tokens):
+    prompt = tokenizer.apply_chat_template(
+        direct_messages(row), tokenize=False,
+        add_generation_prompt=True, enable_thinking=False)
+    ids = tokenizer.encode(prompt, add_special_tokens=False)
+    if not ids or len(ids) &gt; max_tokens:
+        raise ValueError("input tokens exceed limit; no truncation allowed")
+    slots = _slot_ids(tokenizer, len(row["options"]))
+    for letter, token in zip(LETTERS, slots):
+        if tokenizer.encode(prompt + letter, add_special_tokens=False) != ids + [token]:
+            raise ValueError(f"Answer boundary changes tokenization for slot {letter}")
+    return ids, slots, digest(prompt)   # digest = sha256 for auditability</code></pre>
+
+<h3 id="a5">A.5 — One forward pass, last-position logits</h3>
+<p>The whole model is run <strong>once</strong>. We keep only the final position's logits — the distribution
+over the next token. <code>logits_to_keep=1</code> (when the model supports it) tells the model to compute
+just that row, avoiding a full-sequence logit tensor. There is no sampling and no decode loop:</p>
+<pre><code>def _forward(model, inputs):
+    params = inspect.signature(model.forward).parameters
+    kwargs = dict(inputs, use_cache=False, return_dict=True)
+    if "logits_to_keep" in params:
+        kwargs["logits_to_keep"] = 1
+    return model(**kwargs).logits[:, -1, :]     # shape (batch, vocab)</code></pre>
+
+<h3 id="a6">A.6 — Gather the slots, softmax, decide</h3>
+<p>From the full-vocabulary logit vector we index the option-letter tokens and softmax over <em>only</em>
+those, giving a probability per option conditional on the declared set. Note the two device lines: the code
+reads whatever device the model is on and only synchronizes under CUDA — the property that makes it run
+unchanged on CPU:</p>
+<pre><code>def score(model, tokenizer, row, metadata, max_tokens=4096):
+    import torch
+    ids, slots, prompt_hash = encode_prompt(tokenizer, row, max_tokens)
+    device = next(model.parameters()).device          # &lt;- follow the model
+    inputs = {"input_ids":      torch.tensor([ids], dtype=torch.long, device=device),
+              "attention_mask": torch.ones((1, len(ids)), dtype=torch.long, device=device)}
+    if device.type == "cuda": torch.cuda.synchronize(device)   # &lt;- no-op on CPU
+    with torch.inference_mode():
+        vocabulary = _forward(model, inputs)[0].float()        # (vocab,)
+    selected = vocabulary[slots].cpu().tolist()   # logits at A, B, C, ...
+    return {
+        "option_ids":   [o["id"] for o in row["options"]],
+        "option_logits": selected,
+        "probabilities": softmax(selected),        # winner = argmax
+        "input_tokens":  len(ids),
+        "readout": "native full-vocabulary last-position logits restricted to declared answer slots",
+        "probability_status": "conditional option score; uncalibrated as decision confidence",
+        ...
+    }</code></pre>
+<p>That is the entire "JEV-ification": a stock <code>AutoModelForCausalLM</code> is never asked to generate;
+it is asked once for its next-token logits, and the decision is the arg-max over the option slots.</p>
+
+<h3 id="a7">A.7 — The only change to run on CPU</h3>
+<p>SemIf's loader hard-codes a single CUDA device and <code>bfloat16</code>. JEV-CPU replaces just this
+function; every function above is untouched:</p>
+<div class="tablewrap">
+<table>
+  <thead><tr><th>SemIf — <code>core.load_causal_model</code> (GPU)</th><th>JEV-CPU — <code>load_causal_model_cpu</code></th></tr></thead>
+  <tbody><tr>
+  <td><pre style="margin:0"><code>if not torch.cuda.is_available() \
+   or torch.cuda.device_count() != 1:
+    raise ValueError("Expose exactly "
+        "one CUDA GPU ...")
+...
+model = cls.from_pretrained(
+    source, config=config,
+    dtype=torch.bfloat16,
+    device_map={"": "cuda:0"},
+    low_cpu_mem_usage=True, **common)</code></pre></td>
+  <td><pre style="margin:0"><code># no CUDA check, no device_map
+model = AutoModelForCausalLM.from_pretrained(
+    source, config=config,
+    dtype=torch.float32,   # CPU-stable
+    low_cpu_mem_usage=True, **common)
+model.eval()</code></pre></td>
+  </tr></tbody>
+</table>
+</div>
+<p>Because <code>score()</code> and <code>score_shared()</code> derive their device from the model object,
+loading on CPU is sufficient — the same scoring code then runs with <code>torch.cuda.synchronize</code> skipped.
+Swapping the brain model is the one other knob: change <code>MODEL = "Qwen/Qwen3-0.6B"</code> to any causal
+LM whose answer letters are single tokens.</p>
+
+<h3 id="a8">A.8 — Reusing one state across many criteria (shared mode)</h3>
+<p>When many criteria judge the same <code>state</code>, <code>shared.py</code> prefills that state once into a
+native key–value cache, replicates the cache across branches with <code>cache.reorder_cache(...)</code>, and
+evaluates every criterion's answer position in one batched forward using a vector
+<code>logits_to_keep</code>. One expensive prefill, many cheap decisions — and, like the direct path, it
+synchronizes only under CUDA, so it too runs unchanged on CPU.</p>
+
+<hr>
 
 <h2 id="refs">References</h2>
 <ol class="refs">
