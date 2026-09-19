@@ -1,119 +1,157 @@
 # JEV-CPU
 
-**GPU 없이 CPU에서 돌아가는 [SemIf](https://github.com/TheoLeeCJ/SemIf) (Jev semantic-if 엔진) 포트 + 웹 UI.**
+<div align="center">
 
-SemIf는 "텍스트를 생성하지 않고, 선언된 옵션 토큰의 로짓(logits)만 읽어" 실행 시점의
-의미 기반 분기(*semantic if*)를 내리는 엔진입니다. 원본은 **CUDA GPU(4B BF16 모델)** 를 요구하지만,
-JEV-CPU는 **CPU / float32 + 소형 모델**로 동일한 엔진을 그대로 구동합니다.
+**Semantic ifs from open models — on a laptop CPU, no GPU.**
 
-> 원본 SemIf 문서는 [`README.SemIf-upstream.md`](./README.SemIf-upstream.md) 참고.
+*A CPU port of [SemIf](https://github.com/TheoLeeCJ/SemIf) (formerly OpenJev), with a web UI.*
+
+[Run it locally](#quick-start) · [How it works](#how-it-works) · [Web UI](#web-ui)
+
+![JEV-CPU web UI: state on the top left, criteria on the bottom left, typed decision results on the right](assets/jev-cpu-ui.png)
+
+*Live decisions from `Qwen3-0.6B` running on CPU — each answer read from option logits in ~1 second, no text generated.*
+
+</div>
+
+> **Independent project.** JEV-CPU is a thin CPU adaptation of [TheoLeeCJ/SemIf](https://github.com/TheoLeeCJ/SemIf). It is not affiliated with or endorsed by SemIf's author, TypeSafe, or Jev. Jev, TypeSafe, and other names and marks are the property of their respective owners. No infringement is intended.
+
+Most agent decisions are small: *route this*, *retry that*, *does the evidence support X?* SemIf answers them by reading **typed option probabilities directly from a model** — no answer sentence, no JSON repair, no decoding loop. The upstream project targets a CUDA GPU holding a 4B BF16 model.
+
+**JEV-CPU runs the exact same engine on a CPU**, with a small model and a browser UI, so you can try the pattern on any machine — no GPU, no waitlist.
 
 ---
 
-## 핵심: 왜 CPU에서 되는가
+## Why it runs on CPU
 
-SemIf에서 GPU를 강제하는 지점은 `src/semif_phase1/core.py` 의 `load_causal_model()` **단 한 곳**입니다:
+SemIf forces a GPU in exactly **one place** — `src/semif_phase1/core.py` → `load_causal_model()`:
 
 ```python
 if not torch.cuda.is_available() or torch.cuda.device_count() != 1:
     raise ValueError("Expose exactly one CUDA GPU ...")
 ...
-dtype=torch.bfloat16, device_map={"": "cuda:0"}   # ← GPU 고정
+dtype=torch.bfloat16, device_map={"": "cuda:0"}   # ← GPU pinned
 ```
 
-반면 실제 스코어링 로직은 **디바이스 독립적**으로 작성돼 있습니다:
+Everything downstream is **device-agnostic**:
 
-- `direct.py` / `shared.py` → `device = next(model.parameters()).device` 를 따라감
-- `torch.cuda.synchronize` 는 `device.type == "cuda"` 일 때만 호출 (CPU면 no-op)
-- 옵션 로짓 슬롯 추출 · softmax 는 순수 연산
+- `direct.py` / `shared.py` follow `device = next(model.parameters()).device`
+- `torch.cuda.synchronize` is called **only** when `device.type == "cuda"` (a no-op on CPU)
+- option-logit slot extraction and softmax are pure math
 
-따라서 **로더만 CPU로 바꾸면**(`semif_cpu.py`) 원본 스코어링 코드를 수정 없이 CPU에서 사용할 수 있습니다.
+So JEV-CPU only swaps the loader (`semif_cpu.py`, CPU + `float32`) and reuses SemIf's **original, unmodified** scoring code.
+
+```mermaid
+flowchart LR
+    S[Unstructured state] --> M[Open model on CPU]
+    C[Runtime criteria] --> M
+    O[Typed options] --> M
+    M -- native option logits --> P[Probabilities]
+```
+
+- **Runtime-defined:** criteria and option descriptions arrive with the request.
+- **Decision-native:** one forward pass reads declared option logits; no answer token is sampled.
+- **No GPU:** loads `Qwen/Qwen3-0.6B` in `float32` (~2.4 GB) on CPU.
 
 ---
 
-## 구성 파일 (JEV-CPU 추가분)
+## Quick start
 
-| 파일 | 설명 |
-|------|------|
-| `semif_cpu.py` | CPU / float32 모델 로더 shim + `direct.score()` 호출 예제. SemIf 소스는 `./src` 를 자동 탐지. |
-| `server.py` | 순수 표준 라이브러리 웹 서버(**포트 1122**). 모델 1회 로드 후 재사용. 3분할 웹 UI 제공. |
-| `src/semif_phase1/` | 원본 SemIf 엔진 (그대로) |
-
----
-
-## 빠른 시작
+Python 3.10+, ~3 GB RAM, no GPU:
 
 ```bash
-python3 -m venv .venv && source .venv/bin/activate      # (Debian: apt install python3-venv)
+python3 -m venv .venv && source .venv/bin/activate   # Debian/Ubuntu: apt install python3-venv
 pip install --index-url https://download.pytorch.org/whl/cpu torch
 pip install transformers accelerate
 
-# 1) CLI 데모 — 옵션 확률(semantic if) 출력
+# 1) CLI demo — prints typed option probabilities (semantic if)
 python semif_cpu.py
 
-# 2) 웹 UI — http://localhost:1122
+# 2) Web UI — http://localhost:8080  (binds 0.0.0.0)
 python server.py
 ```
 
-최초 실행 시 `Qwen/Qwen3-0.6B`(~2.4GB, float32)를 Hugging Face에서 내려받아 CPU에 로드합니다.
-
-### 요구 사항
-- Python 3.10+
-- RAM ~3GB 이상 (0.6B float32 기준). GPU 불필요.
-- 인터넷(모델 최초 다운로드용)
+The first run downloads `Qwen/Qwen3-0.6B` from Hugging Face and loads it on CPU (≈ 5–17 s). The model is loaded once and reused across requests.
 
 ---
 
-## 웹 UI
+## Web UI
 
-`server.py` 는 세 개의 패널로 구성된 단일 페이지를 제공합니다:
+`server.py` is a dependency-free (standard-library) web server on **port 8080**, laid out in three panes:
 
 ```
-┌─────────────────────┬──────────────────────┐
-│ ① 판단할 데이터      │                      │
-│   (State / Evidence) │   ③ 판단 결과        │
-├─────────────────────┤   (Results)          │
-│ ② 기준 추가          │   옵션별 확률 막대    │
-│   (Criteria)         │                      │
-└─────────────────────┴──────────────────────┘
+┌────────────────────────┬───────────────────────────┐
+│ ① State / Evidence     │                           │
+│   (data to judge)      │   ③ Results               │
+├────────────────────────┤   per-option probability  │
+│ ② Criteria             │   bars + chosen option    │
+│   (add question+options)│                          │
+└────────────────────────┴───────────────────────────┘
 ```
 
-- **① 판단할 데이터** — 리뷰·티켓·로그·JSON 등 판단 대상(`state`)
-- **② 기준 추가** — 질문(criterion) + 옵션(2개 이상)을 동적으로 추가
-- **③ 판단 결과** — 각 기준별로 모델이 읽은 옵션 확률과 선택 결과를 막대로 표시
+- **① State** — the data to judge: a review, ticket, log line, or JSON blob.
+- **② Criteria** — add questions, each with two or more typed options, at runtime.
+- **③ Results** — for every criterion, the option probabilities the model read, and the winning choice.
 
 ### API
 
 ```
 GET  /api/health
 POST /api/decide
-     { "state": "...", "criteria": [ { "id","question","options":[{"id","description"},...] } ] }
+     { "state": "...", "criteria": [ { "id", "question", "options": [ {"id","description"}, ... ] } ] }
 ```
 
 ---
 
-## 검증된 결과 (CPU, Qwen3-0.6B float32)
+## Verified results (CPU · Qwen3-0.6B · float32)
 
-| 입력(state) | 기준 | 결과 | forward |
-|------|------|------|---------|
-| "I was double charged and need a refund before Friday." | 처리 팀 라우팅 | **billing 100%** ✅ | ~1s |
-| 영어 감성 리뷰 | 감성 분류 | **negative 99.9%** ✅ | ~1s |
+| State | Criterion | Result | Forward |
+|---|---|---|---:|
+| "I was double charged and need a refund before Friday." | Which team handles this? | **billing — 100%** ✅ | ~1.1 s |
+| English complaint review | Sentiment | **negative — 99.9%** ✅ | ~1.2 s |
 
-- 모델 로드 ≈ 5–17초, 결정 1건당 CPU forward **≈ 1초** (텍스트 생성이 없어 빠름)
+- Model load ≈ 5–17 s; each decision ≈ **1 s** on CPU (no text is generated).
+- Because SemIf reads option logits instead of decoding tokens, CPU latency stays low.
 
-### ⚠️ 소형 모델 정확도 주의
-`Qwen/Qwen3-0.6B` 는 SemIf 공식 안내대로 *"작은 모델이라 정확도가 낮을 수 있음"* 에 해당합니다.
-특히 **짧은 한국어 라벨의 감성 분류**에서 오답이 관찰됩니다(라우팅 등 명확한 과제는 정확).
-정확도가 중요하면 `semif_cpu.py` 의 `MODEL` 을 더 큰 모델(예: MiniCPM5-2B / Qwen3.5-4B)로 교체하세요.
-단 4B 모델은 원본 SemIf처럼 `transformers` 의 네이티브 Qwen3.5 지원과 더 많은 RAM이 필요합니다.
+### ⚠️ Small-model accuracy
+
+`Qwen/Qwen3-0.6B` is the smallest browser-ladder model; SemIf's own results note it is the least accurate (authored balanced accuracy ≈ 0.44 vs ≈ 0.81 for the 4B). In practice, **terse non-English sentiment labels can be misclassified**, while clear tasks (routing, retrieval) stay correct. For higher accuracy, point `MODEL` in `semif_cpu.py` at a larger checkpoint (e.g. `openbmb/MiniCPM5-2B` or `Qwen/Qwen3.5-4B`). Note the 4B needs `transformers`' native Qwen3.5 support and more RAM, as in upstream SemIf.
 
 ---
 
-## 크레딧 / 라이선스
+## Input
 
-- 엔진 원본: **[TheoLeeCJ/SemIf](https://github.com/TheoLeeCJ/SemIf)** — "Semantic ifs from open models."
-  브라우저 데모: <https://openjev.com/>
-- 개념: TypeSafe 의 *Jev* 인터페이스 패턴
-- 원본 라이선스 및 서드파티 고지는 [`LICENSE`](./LICENSE), [`THIRD_PARTY.md`](./THIRD_PARTY.md) 를 따릅니다.
+```json
+{
+  "id": "route-1",
+  "state": "Customer cannot access an account after a password reset.",
+  "question": "Which queue should handle this request?",
+  "options": [
+    {"id": "access",  "description": "Account access support."},
+    {"id": "billing", "description": "Billing support."}
+  ]
+}
+```
 
-JEV-CPU 는 SemIf 위에 CPU 로더 shim 과 웹 UI 를 더한 것으로, 원본 스코어링 로직을 변경하지 않습니다.
+Returned probabilities are conditional on the supplied options — calibrate them on your workload. `state` may also be a nonempty JSON object or array.
+
+---
+
+## What's in this repo
+
+| Path | Description |
+|---|---|
+| `semif_cpu.py` | CPU/`float32` loader shim + `direct.score()` example. Auto-detects SemIf source (`SEMIF_DIR` env → repo `./src` → `/tmp/SemIf`). |
+| `server.py` | Standard-library web server (port 8080) + three-pane UI. |
+| `src/semif_phase1/` | Upstream SemIf engine, **unchanged**. |
+| `README.SemIf-upstream.md` | Original SemIf README. |
+
+---
+
+## Credits & license
+
+- Engine: **[TheoLeeCJ/SemIf](https://github.com/TheoLeeCJ/SemIf)** — *"Semantic ifs from open models."* Browser demo: <https://openjev.com/>
+- Interface concept: TypeSafe's *Jev* pattern.
+- Baseline model: [Qwen/Qwen3-0.6B](https://huggingface.co/Qwen/Qwen3-0.6B).
+
+JEV-CPU adds only a CPU loader shim and a web UI on top of SemIf; the scoring logic is unchanged. Upstream models retain their licenses; see [`THIRD_PARTY.md`](./THIRD_PARTY.md). Project code is released under the [MIT License](./LICENSE).

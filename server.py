@@ -5,7 +5,7 @@ SemIf 웹 UI 서버 (CPU 백엔드).
 - 백엔드 엔진: SemIf( /tmp/SemIf )의 direct.score() — 텍스트 생성 없이 옵션 logits 읽기
 - 모델: Qwen/Qwen3-0.6B (CPU / float32), 서버 시작 시 1회 로드 후 재사용
 - UI: 좌상단=판단할 데이터(state), 좌하단=기준 추가, 우측=판단 결과
-- 포트: 1122
+- 포트: 8080
 
   . .venv/bin/activate && python server.py
 """
@@ -16,7 +16,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from semif_cpu import load_causal_model_cpu, direct_score, MODEL, REVISION
 
-PORT = 1122
+PORT = 8080
 _LOCK = threading.Lock()
 _STATE = {"model": None, "tokenizer": None, "meta": None}
 
@@ -111,7 +111,7 @@ class Handler(BaseHTTPRequestHandler):
 PAGE = r"""<!doctype html>
 <html lang="ko"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SemIf · Semantic Decisions</title>
+<title>JEV-CPU · Semantic Decisions on CPU</title>
 <style>
 :root{
   --bg:#0e1116; --panel:#161b22; --panel2:#1c232d; --border:#2a323d;
@@ -176,7 +176,7 @@ button.mini{padding:3px 8px;font-size:12px;font-weight:500}
 .hint{color:var(--muted);font-size:11px;margin-top:6px}
 </style></head><body>
 <header>
-  <h1>⚡ SemIf</h1><span class="tag">Semantic decisions · CPU</span>
+  <h1>⚡ JEV-CPU</h1><span class="tag">Semantic decisions · CPU · SemIf engine</span>
   <span class="spacer"></span>
   <span id="status">엔진 준비 확인 중…</span>
 </header>
