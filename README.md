@@ -6,7 +6,7 @@
 
 *A CPU port of [SemIf](https://github.com/TheoLeeCJ/SemIf) (formerly OpenJev), with a web UI.*
 
-[Run it locally](#quick-start) · [How it works](#how-it-works) · [Web UI](#web-ui)
+📄 **[Technical report](https://leesk212.github.io/JEV-CPU/)** · [Run it locally](#quick-start) · [How it works](#how-it-works) · [Web UI](#web-ui)
 
 ![JEV-CPU running live across eight domains, typing each input and reading the decision from logits](assets/jev-cpu-demo.gif)
 

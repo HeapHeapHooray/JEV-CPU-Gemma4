@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JEV-CPU — Running Semantic-If Decisions on a CPU (Technical Report)</title>
+<meta name="description" content="A technical report on JEV-CPU: running SemIf-style semantic-if decisions on a CPU by reading option logits from a small open model, with latency, scaling, and input-length measurements.">
+<style>
+  :root{
+    --bg:#ffffff; --fg:#1a1f26; --muted:#5b6672; --line:#e4e8ee;
+    --accent:#2b6cff; --accent2:#1f8a4c; --warn:#c2410c; --code:#f4f6fa; --chip:#eef3ff;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{--bg:#0e1116;--fg:#e6edf3;--muted:#93a1b0;--line:#232b35;--accent:#6ea8ff;
+          --accent2:#57d977;--warn:#ff9d5c;--code:#161b22;--chip:#16233a;}
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,"Noto Sans KR",sans-serif;}
+  .wrap{max-width:820px;margin:0 auto;padding:40px 22px 90px}
+  header.title{border-bottom:1px solid var(--line);padding-bottom:26px;margin-bottom:34px}
+  .kicker{color:var(--accent);font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:12.5px}
+  h1{font-size:30px;line-height:1.25;margin:.35em 0 .3em}
+  .authors{color:var(--muted);font-size:15px;margin:.2em 0}
+  .badges{margin-top:14px;display:flex;flex-wrap:wrap;gap:8px}
+  .badges a{font-size:12.5px;text-decoration:none;color:var(--fg);background:var(--chip);
+    border:1px solid var(--line);border-radius:20px;padding:4px 12px}
+  .badges a:hover{border-color:var(--accent)}
+  h2{font-size:21px;margin:2.1em 0 .5em;padding-top:.4em}
+  h3{font-size:17px;margin:1.5em 0 .4em}
+  p,li{color:var(--fg)}
+  a{color:var(--accent)}
+  .muted{color:var(--muted)}
+  .abstract{background:var(--code);border:1px solid var(--line);border-radius:12px;padding:18px 20px}
+  .abstract p{margin:.3em 0}
+  figure{margin:24px 0;text-align:center}
+  figure img{max-width:100%;height:auto;border:1px solid var(--line);border-radius:10px}
+  figcaption{color:var(--muted);font-size:13.5px;margin-top:8px}
+  code{background:var(--code);border:1px solid var(--line);border-radius:5px;padding:.5px 5px;font-size:13.5px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  pre{background:var(--code);border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow:auto}
+  pre code{background:none;border:none;padding:0;font-size:13px;line-height:1.55}
+  .tablewrap{overflow-x:auto;margin:18px 0}
+  table{border-collapse:collapse;width:100%;font-size:14.5px}
+  th,td{border:1px solid var(--line);padding:8px 11px;text-align:left}
+  th{background:var(--code);font-weight:650}
+  td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+  .ok{color:var(--accent2);font-weight:700}
+  .bad{color:var(--warn);font-weight:700}
+  .note{border-left:3px solid var(--accent);background:var(--chip);padding:10px 16px;border-radius:0 8px 8px 0;margin:18px 0}
+  .warnbox{border-left:3px solid var(--warn);background:color-mix(in srgb,var(--warn) 10%,transparent);
+    padding:10px 16px;border-radius:0 8px 8px 0;margin:18px 0}
+  ol.refs{padding-left:22px} ol.refs li{margin:.4em 0;font-size:14.5px;color:var(--muted)}
+  ol.refs a{word-break:break-word}
+  hr{border:none;border-top:1px solid var(--line);margin:40px 0}
+  .toc{font-size:14.5px;columns:2;column-gap:30px}
+  .toc a{display:block;color:var(--muted);text-decoration:none;padding:2px 0}
+  .toc a:hover{color:var(--accent)}
+  footer{margin-top:50px;border-top:1px solid var(--line);padding-top:18px;color:var(--muted);font-size:13.5px}
+  @media(max-width:560px){.toc{columns:1}h1{font-size:25px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="title">
+  <div class="kicker">Technical Report · Independent Project</div>
+  <h1>JEV-CPU: Running Semantic-If Decisions on a CPU</h1>
+  <div class="authors">leesk212 · <span class="muted">Meanblock</span></div>
+  <div class="authors muted">September 19, 2026 · v1</div>
+  <div class="badges">
+    <a href="https://github.com/leesk212/JEV-CPU">GitHub</a>
+    <a href="https://huggingface.co/Meanblock/JEV-CPU">Hugging Face</a>
+    <a href="https://github.com/TheoLeeCJ/SemIf">Upstream: SemIf</a>
+  </div>
+</header>
+
+<div class="abstract">
+  <p><strong>Abstract.</strong> <em>Semantic-if</em> decisions — <em>route this</em>, <em>is this a policy
+  violation</em>, <em>what severity is this incident</em> — are usually answered by having a chat model
+  generate text that software then parses back into a branch. SemIf (an open reproduction of TypeSafe's
+  Jev pattern) instead reads a decision directly from a model's <em>option logits</em> in a single
+  forward pass, with no text generated. SemIf targets a GPU holding a 4B model. This report describes
+  <strong>JEV-CPU</strong>, a small adaptation that runs the <em>same</em> engine on a commodity CPU with
+  a 0.6B open model, and reports measurements from an 8&nbsp;GB, GPU-less machine: qualitative decisions
+  across eight domains, a latency-versus-input-length curve, and the resulting practical input ceiling.
+  We make no claim of methodological novelty — the contribution is engineering and empirical: showing the
+  method is device-agnostic, quantifying where CPU latency (not memory or the model) becomes the limit,
+  and documenting how accuracy scales with model size. All code, weights pointer, and demos are public.</p>
+</div>
+
+<h2 id="toc">Contents</h2>
+<nav class="toc">
+  <a href="#intro">1. Introduction</a>
+  <a href="#background">2. Background</a>
+  <a href="#method">3. Method: reading a decision from logits</a>
+  <a href="#system">4. System: the CPU port</a>
+  <a href="#domains">5. Qualitative results across domains</a>
+  <a href="#latency">6. Latency and input-length limits</a>
+  <a href="#scaling">7. Accuracy scaling with model size</a>
+  <a href="#limitations">8. Limitations</a>
+  <a href="#conclusion">9. Conclusion</a>
+  <a href="#repro">10. Reproducibility</a>
+  <a href="#refs">References</a>
+</nav>
+
+<figure>
+  <img src="assets/jev-cpu-demo.gif" alt="JEV-CPU deciding live across eight domains on CPU">
+  <figcaption>Figure 1. JEV-CPU running live on a CPU across eight domains: the state is typed in, criteria
+  are added, and each decision is read from <code>Qwen3-0.6B</code>'s option logits in ~1&nbsp;s — no text generated.</figcaption>
+</figure>
+
+<h2 id="intro">1. Introduction</h2>
+<p>Most decisions inside software agents are small and typed: choose a queue, pick a severity, decide
+whether evidence supports a claim. A chat model can answer them, but generating an answer sentence and
+parsing it back into an <code>if</code> is slow and brittle. A <em>decision-native</em> alternative is to
+present the options as tokens and read the model's probability over exactly those tokens in one forward
+pass. TypeSafe's closed <em>Jev</em> service popularized this interface; <a href="https://github.com/TheoLeeCJ/SemIf">SemIf</a>
+reproduces the interface pattern with open models on a GPU.</p>
+<p>This report asks a narrow, practical question: <strong>does the method still work with no GPU and a
+tiny model, and where does it break down?</strong> We port SemIf's scoring to CPU (<a href="#system">§4</a>),
+run it across eight domains (<a href="#domains">§5</a>), and measure the latency wall that determines the
+usable input size (<a href="#latency">§6</a>).</p>
+
+<h2 id="background">2. Background</h2>
+<p>Reading a categorical decision from an LM's next-token distribution — rather than sampling text — is a
+well-established idea (verbalizer-style zero-shot classification, answer-token scoring, NLI cross-encoders).
+We claim <strong>no novelty</strong> for the mechanism. JEV-CPU is a CPU adaptation and empirical study of
+SemIf, which is itself an independent reproduction of the Jev pattern; Jev and TypeSafe are the property of
+their owners and are not affiliated with this work.</p>
+
+<h2 id="method">3. Method: reading a decision from logits</h2>
+<p>A decision is one record: a <code>state</code> (evidence), a <code>question</code> (criterion), and
+2–16 typed <code>options</code>. The <code>direct</code> scoring path is unchanged from SemIf:</p>
+<ol>
+  <li><strong>Letter-choice prompt.</strong> Each option is labeled <code>A</code>, <code>B</code>,
+  <code>C</code>… in a chat turn whose system instruction asks for a single uppercase letter and nothing
+  else. With the generation prompt applied, the next token the model would emit is the answer letter.</li>
+  <li><strong>Single-token pinning.</strong> Each letter is verified to encode to exactly one token that
+  round-trips and does not perturb the prompt's tokenization, so every option maps to one clean, comparable
+  vocabulary slot.</li>
+  <li><strong>One forward pass.</strong> The prompt is run through the model once; we keep the logits at the
+  final position — the distribution over the next token. No sampling, no decode loop, no JSON to repair.</li>
+  <li><strong>Softmax over slots.</strong> From that full-vocabulary logit vector we gather only the option
+  letters' token ids and softmax over those, giving a probability per option conditional on the declared set.</li>
+</ol>
+<pre><code>logits   = model(**inputs, use_cache=False).logits[:, -1, :]   # (vocab,)
+selected = logits[slot_ids]        # logits at tokens A, B, C, ...
+probs    = softmax(selected)       # distribution over the declared options
+winner   = options[argmax(probs)]</code></pre>
+<p>Because it is one forward pass reading fixed positions, latency is dominated by prompt <em>prefill</em>,
+not by generation length — the property JEV-CPU relies on to stay usable on a CPU.</p>
+
+<h2 id="system">4. System: the CPU port</h2>
+<p>SemIf forces a GPU in exactly one place — its model loader checks for a single CUDA device and loads with
+<code>device_map={"":"cuda:0"}</code>, <code>bfloat16</code>. Everything downstream is device-agnostic: the
+scoring code follows <code>device = next(model.parameters()).device</code> and the only CUDA-specific call,
+<code>torch.cuda.synchronize()</code>, is guarded by <code>if device.type == "cuda"</code> (a no-op on CPU).</p>
+<p>JEV-CPU therefore changes <strong>only the loader</strong>: a CPU / <code>float32</code> loader that reuses
+SemIf's original, unmodified scoring functions. A small standard-library web server exposes the engine with a
+three-pane UI (state, criteria, results). Swapping the model is a one-line change (<code>MODEL = …</code>);
+the engine and UI are model-agnostic.</p>
+<figure>
+  <img src="assets/jev-cpu-ui.png" alt="JEV-CPU three-pane web UI">
+  <figcaption>Figure 2. The web UI: state (top-left), criteria (bottom-left), and per-option probability
+  bars with the chosen option (right). The footer names the method (JEV-CPU engine) and the brain model.</figcaption>
+</figure>
+
+<h2 id="domains">5. Qualitative results across domains</h2>
+<p>Using <code>Qwen/Qwen3-0.6B</code> in <code>float32</code> on CPU, we ran the same engine across eight
+domains (Figure 1). Each decision took ≈1&nbsp;s.</p>
+<div class="tablewrap">
+<table>
+  <thead><tr><th>Domain</th><th>Criterion</th><th>Decision</th><th class="n">Forward</th></tr></thead>
+  <tbody>
+    <tr><td>Customer support</td><td>Sentiment</td><td><span class="ok">negative — 97.4%</span></td><td class="n">~1.1 s</td></tr>
+    <tr><td>Customer support</td><td>Route to team</td><td><span class="ok">billing — 100%</span></td><td class="n">~1.0 s</td></tr>
+    <tr><td>Content moderation</td><td>Policy violation?</td><td><span class="ok">violation — 99.3%</span></td><td class="n">~1.1 s</td></tr>
+    <tr><td>Content moderation</td><td>Recommended action</td><td><span class="ok">warn — 69.2%</span></td><td class="n">~1.0 s</td></tr>
+    <tr><td>Code-review triage</td><td>Merge risk</td><td><span class="ok">high — 99.8%</span></td><td class="n">~1.2 s</td></tr>
+    <tr><td>Code-review triage</td><td>PR disposition</td><td><span class="ok">block — 94.9%</span></td><td class="n">~1.1 s</td></tr>
+    <tr><td>Incident / DevOps</td><td>Severity</td><td><span class="ok">sev1 — 100%</span></td><td class="n">~1.2 s</td></tr>
+    <tr><td>Incident / DevOps</td><td>Page on-call now?</td><td><span class="ok">page_now — 100%</span></td><td class="n">~1.1 s</td></tr>
+    <tr><td>Email intent</td><td>Primary intent</td><td><span class="ok">sales — 100%</span></td><td class="n">~1.2 s</td></tr>
+    <tr><td>Compliance gate</td><td>Change ticket required?</td><td><span class="ok">required — 100%</span></td><td class="n">~1.1 s</td></tr>
+    <tr><td>Loan / credit risk</td><td>Credit risk</td><td><span class="ok">high — 100%</span></td><td class="n">~1.2 s</td></tr>
+    <tr><td>Loan / credit risk</td><td>Recommended decision</td><td><span class="bad">approve — 82.8% ⚠︎</span></td><td class="n">~1.1 s</td></tr>
+    <tr><td>Support prioritization</td><td>Priority</td><td><span class="ok">p1 — 100%</span></td><td class="n">~1.2 s</td></tr>
+  </tbody>
+</table>
+</div>
+<p class="muted">These are single illustrative runs, not a benchmark; they show the interface and the
+qualitative behavior. The loan <em>decision</em> row is a deliberate example of a small-model slip
+(see <a href="#limitations">§8</a>).</p>
+
+<h2 id="latency">6. Latency and input-length limits</h2>
+<p>Two numbers are often conflated. The model's context window is <strong>40,960 tokens</strong> — large even
+at 0.6B, since context length comes from positional encoding, independent of parameter count. SemIf's engine
+applies a default cap of <strong>4,096 tokens per decision</strong> as a guard (over-long prompts raise instead
+of being silently truncated); it is configurable. Neither is the real constraint on CPU.</p>
+<p>We measured one decision with a growing state on the 8&nbsp;GB CPU box (peak RSS via <code>getrusage</code>):</p>
+<div class="tablewrap">
+<table>
+  <thead><tr><th class="n">Input tokens</th><th class="n">Forward (CPU)</th><th class="n">Peak RAM</th></tr></thead>
+  <tbody>
+    <tr><td class="n">254</td><td class="n">2.5 s</td><td class="n">~3.5 GB</td></tr>
+    <tr><td class="n">731</td><td class="n">5.6 s</td><td class="n">~3.5 GB</td></tr>
+    <tr><td class="n">1,363</td><td class="n">11.9 s</td><td class="n">~3.5 GB</td></tr>
+    <tr><td class="n">2,629</td><td class="n">26.0 s</td><td class="n">~3.5 GB</td></tr>
+    <tr><td class="n">5,165</td><td class="n">66.1 s</td><td class="n">~3.5 GB</td></tr>
+    <tr><td class="n">7,697</td><td class="n">117.4 s</td><td class="n">~3.5 GB</td></tr>
+  </tbody>
+</table>
+</div>
+<p>RAM stayed flat at ~3.5&nbsp;GB with no OOM even at 7,697 tokens — well past the 4,096 default — so the
+ceiling on this box is <strong>prefill latency (roughly quadratic in length)</strong>, not memory or the model.</p>
+<div class="warnbox">
+  <strong>Practical input ceiling.</strong> We treat <strong>≈7,700 tokens (~117&nbsp;s)</strong> as the usable
+  maximum on this CPU: beyond it a single decision crosses <strong>~120&nbsp;s</strong>, which is no longer useful,
+  so larger inputs are considered unsupported on this hardware. Interactive ~1&nbsp;s decisions want short states
+  (≲~300 tokens). A GPU removes this wall — inputs up to the model's 40,960 become usable again.
+</div>
+
+<h2 id="scaling">7. Accuracy scaling with model size</h2>
+<p><code>Qwen3-0.6B</code> is the smallest model on SemIf's ladder, chosen to fit in CPU RAM; it is the
+accuracy floor, not the ceiling. From SemIf's own evaluation:</p>
+<div class="tablewrap">
+<table>
+  <thead><tr><th>Brain model</th><th class="n">Size</th><th class="n">Authored balanced acc.</th><th class="n">TypeSafe subset agr.</th></tr></thead>
+  <tbody>
+    <tr><td>Qwen3-0.6B <span class="muted">(JEV-CPU default)</span></td><td class="n">0.6 B</td><td class="n">0.440</td><td class="n">0.407</td></tr>
+    <tr><td>MiniCPM5-2B</td><td class="n">2 B</td><td class="n">0.686</td><td class="n">0.637</td></tr>
+    <tr><td>Qwen3.5-4B</td><td class="n">4 B</td><td class="n"><strong>0.813</strong></td><td class="n"><strong>0.845</strong></td></tr>
+  </tbody>
+</table>
+</div>
+<p>Because the engine is model-agnostic, moving up the ladder is a one-line change — at the cost of RAM and
+compute that exceed this CPU box (a 4B model wants a GPU, SemIf's target). The takeaway: <strong>JEV-CPU shows
+the method runs anywhere; accuracy scales with the model you point it at.</strong></p>
+
+<h2 id="limitations">8. Limitations</h2>
+<ul>
+  <li><strong>No new method.</strong> The logit-readout mechanism is prior art; this is a port and measurement.</li>
+  <li><strong>Small-model errors.</strong> At 0.6B, secondary decisions can be inconsistent — e.g. the loan
+  case flags <em>high risk</em> correctly yet still leans <em>approve</em>. Larger models resolve this (§7).</li>
+  <li><strong>Not a benchmark.</strong> §5 shows single runs for illustration; we do not report accuracy on a
+  held-out labeled set here. SemIf's repository contains the quantitative evaluation we cite in §7.</li>
+  <li><strong>Single-machine measurements.</strong> Latencies (§6) are from one 8&nbsp;GB CPU box and will vary
+  with hardware, threads, and BLAS backend.</li>
+  <li><strong>Probabilities are conditional</strong> on the declared options and are uncalibrated as confidence.</li>
+</ul>
+
+<h2 id="conclusion">9. Conclusion</h2>
+<p>Decision-native, logit-readout inference is not tied to a GPU or a large model. With only a loader change,
+SemIf's engine runs on a commodity CPU with a 0.6B model, decides across many domains at ~1&nbsp;s each, and
+stays memory-stable well past its default token cap. On this hardware the honest limit is latency: inputs above
+~7,700 tokens cross the ~120&nbsp;s mark and are impractical, and small-model accuracy — not context or memory —
+is what improves by scaling the model up. JEV-CPU is offered as a reproducible, minimal demonstration of that.</p>
+
+<h2 id="repro">10. Reproducibility</h2>
+<p>Code, the web UI, the exact scripts behind §5–§6, and all demo GIFs are public:</p>
+<ul>
+  <li>GitHub — <a href="https://github.com/leesk212/JEV-CPU">github.com/leesk212/JEV-CPU</a></li>
+  <li>Hugging Face — <a href="https://huggingface.co/Meanblock/JEV-CPU">huggingface.co/Meanblock/JEV-CPU</a></li>
+</ul>
+<pre><code>python3 -m venv .venv &amp;&amp; source .venv/bin/activate
+pip install --index-url https://download.pytorch.org/whl/cpu torch
+pip install transformers accelerate
+python semif_cpu.py      # CLI: typed option probabilities
+python server.py         # web UI on http://localhost:8080</code></pre>
+
+<h2 id="refs">References</h2>
+<ol class="refs">
+  <li>T. Lee (TheoLeeCJ). <em>SemIf — Semantic ifs from open models.</em> <a href="https://github.com/TheoLeeCJ/SemIf">github.com/TheoLeeCJ/SemIf</a>. Browser demo: <a href="https://openjev.com/">openjev.com</a>.</li>
+  <li>TypeSafe. <em>Jev</em> (closed service for runtime-defined semantic decisions). Names/marks are the property of their owners; this work is independent and unaffiliated.</li>
+  <li>Qwen Team. <em>Qwen3-0.6B.</em> <a href="https://huggingface.co/Qwen/Qwen3-0.6B">huggingface.co/Qwen/Qwen3-0.6B</a>.</li>
+  <li>A. Liu et&nbsp;al. <em>WANLI: Worker and AI Collaboration for NLI.</em> <a href="https://huggingface.co/datasets/alisawuffles/WANLI">dataset</a> (used in SemIf's evaluation cited in §7).</li>
+  <li>This report and JEV-CPU code are released under the MIT License.</li>
+</ol>
+
+<footer>
+  JEV-CPU Technical Report · v1 · September 19, 2026 · leesk212 (Meanblock).
+  An independent CPU port and empirical study of <a href="https://github.com/TheoLeeCJ/SemIf">SemIf</a>.
+  Not affiliated with or endorsed by SemIf's author, TypeSafe, or Jev.
+</footer>
+
+</div>
+</body>
+</html>
