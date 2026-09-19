@@ -6,7 +6,12 @@
 
 *A CPU port of [SemIf](https://github.com/TheoLeeCJ/SemIf) (formerly OpenJev), with a web UI.*
 
-📄 **[Technical report](https://leesk212.github.io/JEV-CPU/)** · [Run it locally](#quick-start) · [How it works](#how-it-works) · [Web UI](#web-ui)
+[![Technical Report](https://img.shields.io/badge/%F0%9F%93%84_Technical_Report-read-2b6cff)](https://leesk212.github.io/JEV-CPU/)
+[![GitHub](https://img.shields.io/badge/GitHub-leesk212%2FJEV--CPU-181717?logo=github)](https://github.com/leesk212/JEV-CPU)
+[![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97_Hugging_Face-Meanblock%2FJEV--CPU-ffcc00)](https://huggingface.co/Meanblock/JEV-CPU)
+[![License: MIT](https://img.shields.io/badge/License-MIT-1f8a4c)](./LICENSE)
+
+📄 **[Read the full technical report →](https://leesk212.github.io/JEV-CPU/)** · [Run it locally](#quick-start) · [How it works](#how-a-decision-is-read-from-logits) · [Web UI](#web-ui)
 
 ![JEV-CPU running live across eight domains, typing each input and reading the decision from logits](assets/jev-cpu-demo.gif)
 
