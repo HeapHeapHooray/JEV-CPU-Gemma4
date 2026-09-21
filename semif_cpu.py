@@ -43,12 +43,14 @@ import transformers
 from semif_phase1.direct import score as direct_score
 
 
-# openjev.com/SemIf 가 쓰는 가장 작은 모델. 원격 로드는 40자 커밋 revision 을 요구한다.
-MODEL = "Qwen/Qwen3-0.6B"
-REVISION = os.environ.get("QWEN_REV", "main")  # 필요시 40자 커밋 해시로 고정
+# 모델 설정: Gemma 4 (~4 GB급 text 모델: google/gemma-4-E2B-it)
+MODEL = os.environ.get("JEV_MODEL", os.environ.get("GEMMA_MODEL", "google/gemma-4-E2B-it"))
+REVISION = os.environ.get("JEV_REV", os.environ.get("GEMMA_REV", "main"))
+DTYPE_NAME = os.environ.get("JEV_DTYPE", "bfloat16")
+DTYPE = getattr(torch, DTYPE_NAME, torch.bfloat16)
 
 
-def load_causal_model_cpu(source: str, revision: str):
+def load_causal_model_cpu(source: str, revision: str, dtype: torch.dtype = DTYPE):
     """core.load_causal_model 의 CPU 버전 (CUDA 검사/ device_map 제거)."""
     common = {"trust_remote_code": False}
     if revision and revision != "main":
@@ -58,7 +60,7 @@ def load_causal_model_cpu(source: str, revision: str):
     model = transformers.AutoModelForCausalLM.from_pretrained(
         source,
         config=config,
-        dtype=torch.float32,      # CPU 안정성 우선
+        dtype=dtype,
         low_cpu_mem_usage=True,
         **common,
     )
@@ -66,7 +68,7 @@ def load_causal_model_cpu(source: str, revision: str):
     metadata = {
         "source": source,
         "revision": revision,
-        "dtype": "float32",
+        "dtype": str(dtype).replace("torch.", ""),
         "device": "cpu",
         "torch_version": torch.__version__,
         "transformers_version": transformers.__version__,
@@ -75,7 +77,7 @@ def load_causal_model_cpu(source: str, revision: str):
 
 
 def main():
-    print(f"[load] {MODEL} @ {REVISION}  (CPU / float32)")
+    print(f"[load] {MODEL} @ {REVISION}  (CPU / {DTYPE_NAME})")
     t0 = time.time()
     model, tokenizer, meta = load_causal_model_cpu(MODEL, REVISION)
     print(f"[load] done in {time.time()-t0:.1f}s "

@@ -3,7 +3,7 @@
 SemIf 웹 UI 서버 (CPU 백엔드).
 
 - 백엔드 엔진: SemIf( /tmp/SemIf )의 direct.score() — 텍스트 생성 없이 옵션 logits 읽기
-- 모델: Qwen/Qwen3-0.6B (CPU / float32), 서버 시작 시 1회 로드 후 재사용
+- 모델: google/gemma-4-E2B-it (CPU / bfloat16), 서버 시작 시 1회 로드 후 재사용
 - UI: 좌상단=판단할 데이터(state), 좌하단=기준 추가, 우측=판단 결과
 - 포트: 8080
 
@@ -23,11 +23,11 @@ _STATE = {"model": None, "tokenizer": None, "meta": None}
 
 def get_engine():
     if _STATE["model"] is None:
-        print(f"[engine] loading {MODEL} @ {REVISION} (CPU/float32) ...", flush=True)
+        print(f"[engine] loading {MODEL} @ {REVISION} (CPU) ...", flush=True)
         t0 = time.time()
         m, tok, meta = load_causal_model_cpu(MODEL, REVISION)
         _STATE.update(model=m, tokenizer=tok, meta=meta)
-        print(f"[engine] ready in {time.time()-t0:.1f}s", flush=True)
+        print(f"[engine] ready in {time.time()-t0:.1f}s (dtype={meta.get('dtype')})", flush=True)
     return _STATE["model"], _STATE["tokenizer"], _STATE["meta"]
 
 
