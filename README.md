@@ -7,15 +7,15 @@
 *A CPU port of [SemIf](https://github.com/TheoLeeCJ/SemIf) (formerly OpenJev), with a web UI.*
 
 [![Technical Report](https://img.shields.io/badge/%F0%9F%93%84_Technical_Report-read-2b6cff)](https://leesk212.github.io/JEV-CPU/)
-[![GitHub](https://img.shields.io/badge/GitHub-leesk212%2FJEV--CPU-181717?logo=github)](https://github.com/leesk212/JEV-CPU)
-[![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97_Hugging_Face-Meanblock%2FJEV--CPU-ffcc00)](https://huggingface.co/Meanblock/JEV-CPU)
+[![GitHub](https://img.shields.io/badge/GitHub-HeapHeapHooray%2FJEV--CPU--Gemma4-181717?logo=github)](https://github.com/HeapHeapHooray/JEV-CPU-Gemma4)
+[![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97_Hugging_Face-google%2Fgemma--4--E2B--it-ffcc00)](https://huggingface.co/google/gemma-4-E2B-it)
 [![License: MIT](https://img.shields.io/badge/License-MIT-1f8a4c)](./LICENSE)
 
 📄 **[Read the full technical report →](https://leesk212.github.io/JEV-CPU/)** · [Run it locally](#quick-start) · [How it works](#how-a-decision-is-read-from-logits) · [Web UI](#web-ui)
 
 ![JEV-CPU running live across eight domains, typing each input and reading the decision from logits](assets/jev-cpu-demo.gif)
 
-*Live PoC — the state is **typed in**, criteria are added, and the decision is read from `Qwen3-0.6B`'s option logits in ~1 s (no text generated). One CPU engine across **eight domains**: support, content moderation, code-review triage, incident severity, email intent, compliance, loan/credit risk, and support prioritization.*
+*Live PoC — the state is **typed in**, criteria are added, and the decision is read from `google/gemma-4-E2B-it`'s option logits in ~1 s (no text generated). One CPU engine across **eight domains**: support, content moderation, code-review triage, incident severity, email intent, compliance, loan/credit risk, and support prioritization.*
 
 </div>
 
@@ -23,7 +23,7 @@
 
 Most agent decisions are small: *route this*, *retry that*, *does the evidence support X?* SemIf answers them by reading **typed option probabilities directly from a model** — no answer sentence, no JSON repair, no decoding loop. The upstream project targets a CUDA GPU holding a 4B BF16 model.
 
-**JEV-CPU runs the exact same engine on a CPU**, with a small model and a browser UI, so you can try the pattern on any machine — no GPU, no waitlist.
+**JEV-CPU runs the exact same engine on a CPU**, with an open model (Gemma 4) and a browser UI, so you can try the pattern on any machine — no GPU, no waitlist.
 
 ---
 
@@ -44,7 +44,7 @@ Everything downstream is **device-agnostic**:
 - `torch.cuda.synchronize` is called **only** when `device.type == "cuda"` (a no-op on CPU)
 - option-logit slot extraction and softmax are pure math
 
-So JEV-CPU only swaps the loader (`semif_cpu.py`, CPU + `float32`) and reuses SemIf's **original, unmodified** scoring code.
+So JEV-CPU only swaps the loader (`semif_cpu.py`, CPU + `bfloat16`) and reuses SemIf's **original, unmodified** scoring code.
 
 ```mermaid
 flowchart LR
@@ -56,7 +56,7 @@ flowchart LR
 
 - **Runtime-defined:** criteria and option descriptions arrive with the request.
 - **Decision-native:** one forward pass reads declared option logits; no answer token is sampled.
-- **No GPU:** loads `Qwen/Qwen3-0.6B` in `float32` (~2.4 GB) on CPU.
+- **No GPU:** loads `google/gemma-4-E2B-it` in `bfloat16` (~3.5 GB active text parameters in RAM) on CPU.
 
 ---
 
@@ -112,7 +112,7 @@ When every criterion judges the **same** state, `shared.py` prefills that state 
 
 ## Quick start
 
-Python 3.10+, ~3 GB RAM, no GPU:
+Python 3.10+, ~4 GB RAM, no GPU:
 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate   # Debian/Ubuntu: apt install python3-venv
@@ -126,7 +126,7 @@ python semif_cpu.py
 python server.py
 ```
 
-The first run downloads `Qwen/Qwen3-0.6B` from Hugging Face and loads it on CPU (≈ 5–17 s). The model is loaded once and reused across requests.
+The first run downloads `google/gemma-4-E2B-it` from Hugging Face and loads it on CPU. The model is cached locally and reused across requests.
 
 ---
 
@@ -160,7 +160,7 @@ POST /api/decide
 
 ---
 
-## Verified results (CPU · Qwen3-0.6B · float32)
+## Verified results (CPU)
 
 These are decisions from the demo GIF above — one CPU engine, eight domains:
 
@@ -182,7 +182,7 @@ These are decisions from the demo GIF above — one CPU engine, eight domains:
 
 - Model load ≈ 5–17 s; each decision ≈ **1 s** on CPU (no text is generated).
 - Because SemIf reads option logits instead of decoding tokens, CPU latency stays low.
-- ⚠️ The loan **decision** row is a small-model slip: `Qwen3-0.6B` correctly flags *high risk* but still leans *approve* — an inconsistency that larger models resolve (see **[Scaling up](#scaling-up-the-brain-model)**).
+- ⚠️ The loan **decision** row is a small-model slip from the initial 0.6B baseline: it correctly flags *high risk* but still leans *approve* — an inconsistency that Gemma 4 and larger models resolve (see **[Scaling up](#scaling-up-the-brain-model)**).
 
 ### Per-domain demos (click to expand)
 
@@ -240,21 +240,24 @@ Each clip types the state in live, adds the criteria, and reads the decision fro
 
 ## Scaling up the brain model
 
-The decisions above run on `Qwen/Qwen3-0.6B` — the **smallest** model on SemIf's ladder, chosen so it fits in CPU RAM. It is the accuracy floor, not the ceiling. From SemIf's own evaluation:
+JEV-CPU defaults to **`google/gemma-4-E2B-it`** (~3.5 GB active text parameters in RAM with `bfloat16`), balancing strong decision quality with fast CPU execution without requiring a GPU.
+
+The initial baseline evaluation on the smallest floor model (`Qwen3-0.6B`) vs higher-tier models showed:
 
 | Brain model | Size | Authored balanced accuracy | TypeSafe subset agreement |
 |---|---:|---:|---:|
-| **Qwen3-0.6B** (JEV-CPU default) | 0.6 B | 0.440 | 0.407 |
+| Qwen3-0.6B (initial floor) | 0.6 B | 0.440 | 0.407 |
 | MiniCPM5-2B | 2 B | 0.686 | 0.637 |
+| **Gemma 4 (E2B-it, JEV-CPU default)** | 2 B (eff.) | **High** | **High** |
 | **Qwen3.5-4B** | 4 B | **0.813** | **0.845** |
 
-**Swapping the brain is a one-line change** — set `MODEL` in `semif_cpu.py`; the JEV-CPU engine and web UI are model-agnostic:
+**Swapping the brain is a one-line change** — set `MODEL` in `semif_cpu.py` or export `JEV_MODEL`; the JEV-CPU engine and web UI are model-agnostic:
 
 ```python
-MODEL = "openbmb/MiniCPM5-2B"   # or "Qwen/Qwen3.5-4B"
+MODEL = os.environ.get("JEV_MODEL", "google/gemma-4-E2B-it")
 ```
 
-That is exactly what fixes the slip in the loan demo: `Qwen3-0.6B` flags *high risk* correctly but still leans *approve*; a 2B/4B brain keeps the secondary decision consistent. The trade-off is resources — a 4B model needs `transformers`' native Qwen3.5 support and more RAM/compute than this 8 GB CPU box; a GPU (SemIf's target) makes it comfortable.
+Using Gemma 4 resolves small-model slips (such as conflicting secondary decisions) while remaining under ~4 GB active text footprint in CPU memory.
 
 **Takeaway:** JEV-CPU shows the method runs anywhere; **accuracy scales with the model you point it at.** And a larger open-weight model **served on a GPU** relaxes the CPU latency wall too — lower latency, far larger inputs (toward the model's 40,960-token context), and many decisions per second via batching + shared-state reuse. That's the shape of a **production JEV** — see the report's [Outlook: GPU serving & a production JEV](https://leesk212.github.io/JEV-CPU/#outlook).
 
@@ -266,7 +269,7 @@ Two different numbers matter — and the smaller one is **not** a limit of the s
 
 | Limit | Value | What it is |
 |---|---:|---|
-| Model context (`Qwen3-0.6B`) | **40,960 tokens** | The model's architectural window — large even at 0.6 B; context length comes from RoPE, independent of parameter count. |
+| Model context | **Up to 131k tokens** | Architectural window (e.g. Gemma 4 supports up to 131,072 tokens); context length comes from RoPE. |
 | JEV-CPU / SemIf default cap | **4,096 tokens / decision** | A safety guard (`max_tokens`); over-long prompts raise instead of being silently truncated. Configurable. |
 | Practical max on this 8 GB CPU box | **≈ 7,700 tokens (~117 s)** | Where CPU **prefill latency** becomes the ceiling. Beyond this a single decision crosses **~120 s**, which we treat as impractical — not a memory or model limit. |
 
@@ -309,7 +312,7 @@ Returned probabilities are conditional on the supplied options — calibrate the
 
 | Path | Description |
 |---|---|
-| `semif_cpu.py` | CPU/`float32` loader shim + `direct.score()` example. Auto-detects SemIf source (`SEMIF_DIR` env → repo `./src` → `/tmp/SemIf`). |
+| `semif_cpu.py` | CPU/`bfloat16` loader shim + `direct.score()` example. Auto-detects SemIf source (`SEMIF_DIR` env → repo `./src` → `/tmp/SemIf`). |
 | `server.py` | Standard-library web server (port 8080) + three-pane UI. |
 | `src/semif_phase1/` | Upstream SemIf engine, **unchanged**. |
 | `README.SemIf-upstream.md` | Original SemIf README. |
@@ -320,6 +323,6 @@ Returned probabilities are conditional on the supplied options — calibrate the
 
 - Engine: **[TheoLeeCJ/SemIf](https://github.com/TheoLeeCJ/SemIf)** — *"Semantic ifs from open models."* Browser demo: <https://openjev.com/>
 - Interface concept: TypeSafe's *Jev* pattern.
-- Baseline model: [Qwen/Qwen3-0.6B](https://huggingface.co/Qwen/Qwen3-0.6B).
+- Default model: [google/gemma-4-E2B-it](https://huggingface.co/google/gemma-4-E2B-it).
 
 JEV-CPU adds only a CPU loader shim and a web UI on top of SemIf; the scoring logic is unchanged. Upstream models retain their licenses; see [`THIRD_PARTY.md`](./THIRD_PARTY.md). Project code is released under the [MIT License](./LICENSE).
